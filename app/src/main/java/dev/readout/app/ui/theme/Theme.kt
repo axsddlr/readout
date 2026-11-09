@@ -2,34 +2,62 @@ package dev.readout.app.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import dev.readout.app.data.MachineState
 
 enum class ThemeMode { System, Light, Dark }
 
-/** Colours the app needs that Material's scheme cannot express without being re-tinted. */
-data class ReadoutPalette(
-    val plate: Color,
-    val onPlate: Color,
-    val work: Color,
-    val ready: Color,
-    val hairline: Color
-)
+/** A container colour and the content colour that sits on it. */
+@Immutable
+data class Tone(val container: Color, val content: Color)
 
-val LocalPalette = staticCompositionLocalOf {
-    ReadoutPalette(Color(0xFFFFD43B), Color(0xFF241C00), Color(0xFFB0411B), Color(0xFF0E6E68), Color(0xFFD6CBBA))
+/**
+ * Colours the app needs beyond Material's roles. State maps onto scheme roles so it follows
+ * the wallpaper; only [ready] is fixed.
+ */
+@Immutable
+data class ReadoutPalette(
+    val ready: Color,
+    val working: Tone,
+    val paused: Tone,
+    val fault: Tone,
+    val idle: Tone
+) {
+    /** The tone for a machine state. State is always also written as text. */
+    fun forState(state: MachineState?): Tone = when (state) {
+        MachineState.Printing, MachineState.Resuming, MachineState.Finishing,
+        MachineState.Cancelling -> working
+        MachineState.Paused, MachineState.Pausing -> paused
+        MachineState.Error, MachineState.Disconnected -> fault
+        else -> idle
+    }
+
+    companion object {
+        fun from(scheme: ColorScheme, dark: Boolean) = ReadoutPalette(
+            ready = if (dark) StateColors.ReadyDark else StateColors.ReadyLight,
+            working = Tone(scheme.primaryContainer, scheme.onPrimaryContainer),
+            paused = Tone(scheme.tertiaryContainer, scheme.onTertiaryContainer),
+            fault = Tone(scheme.errorContainer, scheme.onErrorContainer),
+            idle = Tone(scheme.surfaceContainerHigh, scheme.onSurface)
+        )
+    }
 }
+
+val LocalPalette = staticCompositionLocalOf { ReadoutPalette.from(ReadoutLightColors, dark = false) }
 
 @Composable
 fun ReadoutTheme(
     mode: ThemeMode = ThemeMode.System,
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val dark = when (mode) {
@@ -47,15 +75,7 @@ fun ReadoutTheme(
         else -> ReadoutLightColors
     }
 
-    val palette = ReadoutPalette(
-        plate = MachineColors.Plate,
-        onPlate = MachineColors.OnPlate,
-        work = if (dark) MachineColors.WorkDark else MachineColors.WorkLight,
-        ready = if (dark) MachineColors.ReadyDark else MachineColors.ReadyLight,
-        hairline = scheme.outlineVariant
-    )
-
-    CompositionLocalProvider(LocalPalette provides palette) {
+    CompositionLocalProvider(LocalPalette provides ReadoutPalette.from(scheme, dark)) {
         MaterialTheme(
             colorScheme = scheme,
             typography = ReadoutTypography,

@@ -4,7 +4,6 @@ import android.net.Uri
 import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,8 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -55,6 +53,7 @@ import dev.readout.app.data.TimelapseEntry
 import dev.readout.app.ui.ReadoutIcons
 import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
+import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
 import kotlinx.coroutines.delay
@@ -104,17 +103,17 @@ fun TimelapseScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
             Spacer(Modifier.width(Spacing.xs))
-            Text("TIMELAPSES", style = MaterialTheme.typography.labelMedium)
+            Text("Timelapses", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { reload++ }) {
-                Text("REFRESH", style = MaterialTheme.typography.labelLarge)
+                Text("Refresh")
             }
         }
 
         status?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = Spacing.l)
             )
@@ -144,7 +143,7 @@ fun TimelapseScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
-                TextButton(onClick = { reload++ }) { Text("TRY AGAIN") }
+                TextButton(onClick = { reload++ }) { Text("Try again") }
             }
 
             entries.isEmpty() -> Column(Modifier.padding(horizontal = Spacing.l)) {
@@ -154,15 +153,15 @@ fun TimelapseScreen(
                 )
             }
 
-            else -> LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = Spacing.l, end = Spacing.l, bottom = Spacing.xxl
-                ),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-                modifier = Modifier.weight(1f)
+            else -> Plate(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l)
             ) {
-                items(entries, key = { it.name }) { entry ->
-                    Plate(Modifier.fillMaxWidth()) {
+                LazyColumn {
+                    itemsIndexed(entries, key = { _, e -> e.name }) { index, entry ->
+                        if (index > 0) RowDivider()
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -173,26 +172,25 @@ fun TimelapseScreen(
                             Icon(
                                 imageVector = Icons.Filled.PlayArrow,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(Modifier.width(Spacing.m))
+                            Spacer(Modifier.width(Spacing.l))
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     text = entry.name,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Spacer(Modifier.height(Spacing.xxs))
                                 Text(
                                     text = buildString {
                                         append(Format.bytes(entry.sizeBytes))
                                         if (entry.dateSeconds != null) {
-                                            append("  ·  ")
+                                            append(" · ")
                                             append(Format.fileDate(entry.dateSeconds))
                                         }
                                     },
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -223,10 +221,10 @@ fun TimelapseScreen(
                         status = if (deleted) "Deleted ${entry.name}." else "Could not delete ${entry.name}."
                         reload++
                     }
-                }) { Text("DELETE", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) { Text("KEEP") }
+                TextButton(onClick = { confirmDelete = null }) { Text("Keep") }
             }
         )
     }
@@ -255,10 +253,7 @@ private fun TimelapsePlayer(
     var playing by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = Spacing.l).padding(bottom = Spacing.xxl)) {
             Text(
                 text = entry.name,
@@ -271,7 +266,7 @@ private fun TimelapsePlayer(
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(MaterialTheme.shapes.large)
                     .background(Color.Black)
             ) {
                 AndroidView(
@@ -330,7 +325,7 @@ private fun TimelapsePlayer(
                 )
                 Text(
                     text = "${clock(position)} / ${clock(duration)}",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

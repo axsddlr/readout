@@ -50,14 +50,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val Paper = Color(0xFFF7F2E7)
-private val Graphite = Color(0xFF131110)
-private val Plate = Color(0xFFFFD43B)
-private val Muted = Color(0xFF9A9184)
-private val OnPlate = Color(0xFF131110)
-private val Rust = Color(0xFFFF9B6B)
-private val Rail = Color(0xFF3A342C)
-private val Mono = FontFamily.Monospace
+// Dark Material You scheme (fallback seed #00658F).
+private val OnSurface = Color(0xFFDFE3E7)
+private val Background = Color(0xFF0A0E10)
+private val PrimaryContainer = Color(0xFF004C6C)
+private val OnPrimaryContainer = Color(0xFFC7E7FF)
+private val Muted = Color(0xFFC1C7CE)
+private val ErrorText = Color(0xFFFFB4AB)
+private val Outline = Color(0xFF41484D)
+private val IdleContainer = Color(0xFF262A2E)
+private val PausedContainer = Color(0xFF4C4268)
+private val OnPausedContainer = Color(0xFFE9DDFF)
+private val Sans = FontFamily.Default
 
 /**
  * The watch is a glance and two verbs. It reads the same printer the phone does, keeps its own
@@ -87,7 +91,7 @@ private fun WatchApp() {
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(Graphite).padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize().background(Background).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         if (config == null) {
@@ -100,33 +104,33 @@ private fun WatchApp() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                MonoLabel("READOUT")
+                Label("Readout")
 
                 val current = snapshot
                 if (current == null) {
-                    MonoLabel("LINKING…")
+                    Label("Linking…")
                 } else {
                     StatePlate(current)
                     BasicText(
                         text = current.progress?.let { "${(it * 100).toInt()}%" } ?: "—",
                         style = TextStyle(
-                            color = Paper,
+                            color = OnSurface,
                             fontSize = 32.sp,
-                            fontFamily = Mono,
+                            fontFamily = Sans,
                             fontWeight = FontWeight.Bold
                         )
                     )
-                    if (current.printing) MonoLabel(eta(current.etaSeconds))
-                    MonoLabel(temperatures(current), size = 10)
+                    if (current.printing) Label(eta(current.etaSeconds))
+                    Label(temperatures(current), size = 12)
                 }
 
                 error?.let {
                     BasicText(
-                        text = it.uppercase(),
+                        text = it,
                         style = TextStyle(
-                            color = Rust,
-                            fontSize = 9.sp,
-                            fontFamily = Mono,
+                            color = ErrorText,
+                            fontSize = 11.sp,
+                            fontFamily = Sans,
                             textAlign = TextAlign.Center
                         )
                     )
@@ -134,11 +138,11 @@ private fun WatchApp() {
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (snapshot?.paused == true) {
-                        Action("RESUME") {
+                        Action("Resume") {
                             scope.launch { runCatching { withContext(Dispatchers.IO) { api?.resume() } } }
                         }
                     } else {
-                        Action("PAUSE") {
+                        Action("Pause") {
                             scope.launch { runCatching { withContext(Dispatchers.IO) { api?.pause() } } }
                         }
                     }
@@ -152,7 +156,7 @@ private fun WatchApp() {
                         error = null
                     }
                 ) {
-                    MonoLabel("CHANGE", size = 9)
+                    Label("Change", size = 11)
                 }
             }
         }
@@ -160,14 +164,13 @@ private fun WatchApp() {
 }
 
 @Composable
-private fun MonoLabel(text: String, size: Int = 9) {
+private fun Label(text: String, size: Int = 11) {
     BasicText(
         text = text,
         style = TextStyle(
             color = Muted,
             fontSize = size.sp,
-            fontFamily = Mono,
-            letterSpacing = 2.sp,
+            fontFamily = Sans,
             textAlign = TextAlign.Center
         )
     )
@@ -177,23 +180,26 @@ private fun MonoLabel(text: String, size: Int = 9) {
 private fun StatePlate(snapshot: WearSnapshot) {
     val working = snapshot.printing && !snapshot.paused
     val background = when {
-        working -> Plate
-        snapshot.paused -> Color(0xFFB0411B)
-        else -> Color(0xFF2A2621)
+        working -> PrimaryContainer
+        snapshot.paused -> PausedContainer
+        else -> IdleContainer
     }
-    val ink = if (working) OnPlate else Paper
+    val ink = when {
+        working -> OnPrimaryContainer
+        snapshot.paused -> OnPausedContainer
+        else -> OnSurface
+    }
     Box(
-        Modifier.clip(RoundedCornerShape(3.dp)).background(background)
-            .padding(horizontal = 10.dp, vertical = 3.dp)
+        Modifier.clip(RoundedCornerShape(50)).background(background)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
         BasicText(
-            text = snapshot.headline,
+            text = sentenceCase(snapshot.headline),
             style = TextStyle(
                 color = ink,
-                fontSize = 10.sp,
-                fontFamily = Mono,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
+                fontSize = 12.sp,
+                fontFamily = Sans,
+                fontWeight = FontWeight.Medium
             )
         )
     }
@@ -202,18 +208,17 @@ private fun StatePlate(snapshot: WearSnapshot) {
 @Composable
 private fun Action(label: String, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(3.dp)).background(Plate)
+        Modifier.clip(RoundedCornerShape(50)).background(PrimaryContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 8.dp)
     ) {
         BasicText(
             text = label,
             style = TextStyle(
-                color = OnPlate,
-                fontSize = 11.sp,
-                fontFamily = Mono,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                color = OnPrimaryContainer,
+                fontSize = 13.sp,
+                fontFamily = Sans,
+                fontWeight = FontWeight.Medium
             )
         )
     }
@@ -228,11 +233,11 @@ private fun ConnectForm(onConnect: (String, String) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        MonoLabel("READOUT")
-        MonoLabel("PRINTER ADDRESS")
+        Label("Readout")
+        Label("Printer address")
         WatchField(url, { url = it }, "192.168.1.50")
         WatchField(key, { key = it }, "API key", password = true)
-        Action("CONNECT") {
+        Action("Connect") {
             if (url.isNotBlank() && key.isNotBlank()) onConnect(url.trim(), key.trim())
         }
     }
@@ -250,9 +255,9 @@ private fun WatchField(
         onValueChange = onChange,
         singleLine = true,
         textStyle = TextStyle(
-            color = Paper,
+            color = OnSurface,
             fontSize = 13.sp,
-            fontFamily = Mono,
+            fontFamily = Sans,
             textAlign = TextAlign.Center
         ),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
@@ -263,14 +268,14 @@ private fun WatchField(
         decorationBox = { inner ->
             Box(
                 Modifier.fillMaxWidth()
-                    .border(1.dp, Rail, RoundedCornerShape(3.dp))
-                    .padding(vertical = 7.dp),
+                    .border(1.dp, Outline, RoundedCornerShape(24.dp))
+                    .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (value.isEmpty()) {
                     BasicText(
                         text = placeholder,
-                        style = TextStyle(color = Muted, fontSize = 11.sp, fontFamily = Mono)
+                        style = TextStyle(color = Muted, fontSize = 11.sp, fontFamily = Sans)
                     )
                 }
                 inner()
@@ -278,6 +283,9 @@ private fun WatchField(
         }
     )
 }
+
+private fun sentenceCase(text: String): String =
+    text.lowercase().replaceFirstChar { it.titlecase() }
 
 private fun eta(seconds: Int?): String {
     if (seconds == null || seconds <= 0) return ""

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,21 +41,22 @@ class WidgetPreviewActivity : ComponentActivity() {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF131110))
+                        .background(Color(0xFF0F1417))
+                        .safeDrawingPadding()
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
-                    Text("WIDGET / PRINTING", color = Color(0xFFEEE6DA))
+                    Text("Widget · Printing", color = Color(0xFFC1C7CE))
                     WidgetHost(WidgetRenderer.printViews(this@WidgetPreviewActivity, printingSnapshot(), 320))
 
-                    Text("WIDGET / IDLE", color = Color(0xFFEEE6DA))
+                    Text("Widget · Idle", color = Color(0xFFC1C7CE))
                     WidgetHost(WidgetRenderer.printViews(this@WidgetPreviewActivity, idleSnapshot(), 320))
 
-                    Text("WIDGET / TEMPERATURES", color = Color(0xFFEEE6DA))
+                    Text("Widget · Temperatures", color = Color(0xFFC1C7CE))
                     WidgetHost(WidgetRenderer.tempsViews(this@WidgetPreviewActivity, printingSnapshot()), widthDp = 150)
 
-                    Text("WIDGET / CAMERA (FRAME)", color = Color(0xFFEEE6DA))
+                    Text("Widget · Camera (frame)", color = Color(0xFFC1C7CE))
                     WidgetHost(
                         WidgetRenderer.cameraViews(
                             this@WidgetPreviewActivity,
@@ -65,7 +67,7 @@ class WidgetPreviewActivity : ComponentActivity() {
                         heightDp = 180
                     )
 
-                    Text("WIDGET / CAMERA (NO FRAME)", color = Color(0xFFEEE6DA))
+                    Text("Widget · Camera (no frame)", color = Color(0xFFC1C7CE))
                     WidgetHost(
                         WidgetRenderer.cameraViews(
                             this@WidgetPreviewActivity,
@@ -100,17 +102,17 @@ class WidgetPreviewActivity : ComponentActivity() {
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
         paint.shader = android.graphics.LinearGradient(
             0f, 0f, 640f, 360f,
-            intArrayOf(0xFF2A2621.toInt(), 0xFF4A443A.toInt()),
+            intArrayOf(0xFF1C2328.toInt(), 0xFF3A4650.toInt()),
             null,
             android.graphics.Shader.TileMode.CLAMP
         )
         canvas.drawRect(0f, 0f, 640f, 360f, paint)
         paint.shader = null
-        paint.color = 0xFFFFD43B.toInt()
+        paint.color = 0xFFB8C7D4.toInt()
         canvas.drawCircle(520f, 90f, 42f, paint)
-        paint.color = 0xFFEEE6DA.toInt()
+        paint.color = 0xFFDFE3E7.toInt()
         canvas.drawRect(120f, 220f, 520f, 300f, paint)
-        paint.color = 0xFF7A6F5E.toInt()
+        paint.color = 0xFF6C7880.toInt()
         canvas.drawRect(120f, 300f, 520f, 312f, paint)
         return bitmap
     }

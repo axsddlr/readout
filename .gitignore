@@ -21,3 +21,6 @@ keystore.properties
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Local design notes, not part of the app
+DESIGN.md

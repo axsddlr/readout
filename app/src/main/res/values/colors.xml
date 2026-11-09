@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Widget surface: paper stock, ink, and the one signal plate. -->
-    <color name="widget_background">#FBF7EE</color>
-    <color name="widget_outline">#D6CBBA</color>
-    <color name="widget_ink">#1E1A16</color>
-    <color name="widget_muted">#4E463A</color>
-    <color name="widget_track">#D6CBBA</color>
-    <color name="widget_plate">#FFD43B</color>
-    <color name="widget_on_plate">#241C00</color>
-    <color name="widget_band_idle">#E9E1D2</color>
+    <!-- Widget colours: Material You fallback scheme (seed #00658F). Android 12+ overrides these in values-v31. -->
+    <color name="widget_background">#F0F4F8</color>
+    <color name="widget_ink">#181C1F</color>
+    <color name="widget_muted">#41484D</color>
+    <color name="widget_track">#C1C7CE</color>
+    <!-- Printing band: primaryContainer / onPrimaryContainer. -->
+    <color name="widget_plate">#C7E7FF</color>
+    <color name="widget_on_plate">#001E2E</color>
+    <!-- Paused band: tertiaryContainer / onTertiaryContainer. -->
+    <color name="widget_band_paused">#E9DDFF</color>
+    <color name="widget_on_band_paused">#1F1635</color>
+    <!-- Idle band: surfaceContainerHigh. -->
+    <color name="widget_band_idle">#E4E8EC</color>
     <color name="widget_band_error">#FFDAD6</color>
     <color name="widget_error_ink">#410002</color>
     <color name="widget_caption_scrim">#99000000</color>

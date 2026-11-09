@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import android.widget.RemoteViews
 import dev.readout.app.MainActivity
 import dev.readout.app.R
@@ -16,8 +17,9 @@ import dev.readout.app.data.PrinterSnapshot
 import dev.readout.app.util.Format
 
 /**
- * Widgets are the same plate language as the app, at home-screen scale: the signal band states
- * one thing, the ruler measures, and every number is monospaced so it cannot jitter.
+ * Widgets follow the app's Material You styling at home-screen scale: a rounded state chip
+ * states one thing and a rounded bar measures progress. Colours come from resources, so Android 12+
+ * wallpaper colours apply automatically.
  */
 object WidgetRenderer {
 
@@ -35,27 +37,19 @@ object WidgetRenderer {
         val working = state in ACTIVE
         val failed = state == MachineState.Error || state == MachineState.Disconnected
 
-        val bandColor = when {
-            failed -> R.color.widget_band_error
-            working -> R.color.widget_plate
-            else -> R.color.widget_band_idle
-        }
-        val bandInk = when {
-            failed -> R.color.widget_error_ink
-            working -> R.color.widget_on_plate
-            else -> R.color.widget_ink
-        }
+        val bandBackground = bandBackground(state, failed, working)
+        val bandInk = bandInk(state, failed, working)
 
         val updatedAt = WidgetCache.updatedAt(context)
         val stale = working && updatedAt != null && System.currentTimeMillis() - updatedAt > STALE_AFTER_MS
         val bandText = if (stale) {
-            "${snapshot?.stateLabel.orEmpty().uppercase()} · STALE"
+            "${snapshot?.stateLabel.orEmpty()} · stale"
         } else {
-            (snapshot?.stateLabel ?: "Not connected").uppercase()
+            snapshot?.stateLabel ?: "Not connected"
         }
         views.setTextViewText(R.id.widget_band, bandText)
         views.setTextColor(R.id.widget_band, context.getColor(bandInk))
-        views.setInt(R.id.widget_band, "setBackgroundColor", context.getColor(bandColor))
+        views.setInt(R.id.widget_band, "setBackgroundResource", bandBackground)
 
         views.setTextViewText(
             R.id.widget_job,
@@ -100,20 +94,12 @@ object WidgetRenderer {
         val working = state in ACTIVE
         val failed = state == MachineState.Error || state == MachineState.Disconnected
 
-        val bandColor = when {
-            failed -> R.color.widget_band_error
-            working -> R.color.widget_plate
-            else -> R.color.widget_band_idle
-        }
-        val bandInk = when {
-            failed -> R.color.widget_error_ink
-            working -> R.color.widget_on_plate
-            else -> R.color.widget_ink
-        }
+        val bandBackground = bandBackground(state, failed, working)
+        val bandInk = bandInk(state, failed, working)
 
-        views.setTextViewText(R.id.widget_band, (snapshot?.stateLabel ?: "Not connected").uppercase())
+        views.setTextViewText(R.id.widget_band, snapshot?.stateLabel ?: "Not connected")
         views.setTextColor(R.id.widget_band, context.getColor(bandInk))
-        views.setInt(R.id.widget_band, "setBackgroundColor", context.getColor(bandColor))
+        views.setInt(R.id.widget_band, "setBackgroundResource", bandBackground)
 
         val nozzle = snapshot?.temperatures?.firstOrNull { it.key.startsWith("tool") }
         val bed = snapshot?.temperatures?.firstOrNull { it.key == "bed" }
@@ -141,19 +127,11 @@ object WidgetRenderer {
         val working = state in ACTIVE
         val failed = state == MachineState.Error || state == MachineState.Disconnected
 
-        val bandColor = when {
-            failed -> R.color.widget_band_error
-            working -> R.color.widget_plate
-            else -> R.color.widget_band_idle
-        }
-        val bandInk = when {
-            failed -> R.color.widget_error_ink
-            working -> R.color.widget_on_plate
-            else -> R.color.widget_ink
-        }
-        views.setTextViewText(R.id.camera_band, (snapshot?.stateLabel ?: "Not connected").uppercase())
+        val bandBackground = bandBackground(state, failed, working)
+        val bandInk = bandInk(state, failed, working)
+        views.setTextViewText(R.id.camera_band, snapshot?.stateLabel ?: "Not connected")
         views.setTextColor(R.id.camera_band, context.getColor(bandInk))
-        views.setInt(R.id.camera_band, "setBackgroundColor", context.getColor(bandColor))
+        views.setInt(R.id.camera_band, "setBackgroundResource", bandBackground)
 
         if (bitmap != null) {
             views.setImageViewBitmap(R.id.camera_image, bitmap)
@@ -176,39 +154,40 @@ object WidgetRenderer {
         return views
     }
 
+    private fun bandBackground(state: MachineState, failed: Boolean, working: Boolean): Int = when {
+        failed -> R.drawable.widget_band_error
+        state == MachineState.Paused || state == MachineState.Pausing -> R.drawable.widget_band_paused
+        working -> R.drawable.widget_band_active
+        else -> R.drawable.widget_band_idle
+    }
+
+    private fun bandInk(state: MachineState, failed: Boolean, working: Boolean): Int = when {
+        failed -> R.color.widget_error_ink
+        state == MachineState.Paused || state == MachineState.Pausing -> R.color.widget_on_band_paused
+        working -> R.color.widget_on_plate
+        else -> R.color.widget_ink
+    }
+
+    /** Rounded progress bar: a track pill with a filled pill over it. Colours resolve through v31 dynamic colour. */
     private fun rulerBitmap(context: Context, width: Int, height: Int, progress: Float?): Bitmap {
-        val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        val w = width.coerceAtLeast(1)
+        val h = height.coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.BUTT }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val density = context.resources.displayMetrics.density
-        val ink = context.getColor(R.color.widget_ink)
-        val track = context.getColor(R.color.widget_track)
-        val value = progress ?: 0f
-        val baseY = height * 0.72f
+        val barHeight = 10f * density
+        val top = (h - barHeight) / 2f
+        val radius = barHeight / 2f
 
-        for (index in 0..100) {
-            val x = width * index / 100f
-            val major = index % 10 == 0
-            val mid = index % 5 == 0
-            val length = when {
-                major -> height * 0.56f
-                mid -> height * 0.36f
-                else -> height * 0.20f
-            }
-            paint.color = if (index / 100f <= value) ink else track
-            paint.strokeWidth = if (major) 2f * density else 1f * density
-            canvas.drawLine(x, baseY, x, baseY - length, paint)
-        }
+        paint.color = context.getColor(R.color.widget_track)
+        canvas.drawRoundRect(RectF(0f, top, w.toFloat(), top + barHeight), radius, radius, paint)
 
-        paint.color = track
-        paint.strokeWidth = 1f * density
-        canvas.drawLine(0f, baseY, width.toFloat(), baseY, paint)
-
-        if (progress != null) {
-            val carriageX = width * value
-            paint.color = ink
-            paint.strokeWidth = 2.5f * density
-            canvas.drawLine(carriageX, baseY - height * 0.85f, carriageX, baseY + height * 0.2f, paint)
+        val value = (progress ?: 0f).coerceIn(0f, 1f)
+        if (value > 0f) {
+            paint.color = context.getColor(R.color.widget_on_plate)
+            val fillRight = (w * value).coerceAtLeast(barHeight)
+            canvas.drawRoundRect(RectF(0f, top, fillRight, top + barHeight), radius, radius, paint)
         }
         return bitmap
     }

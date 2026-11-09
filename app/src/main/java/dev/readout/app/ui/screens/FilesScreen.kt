@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -32,6 +30,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,9 +49,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.FileEntry
-import dev.readout.app.ui.components.DashedRule
+import dev.readout.app.ui.ReadoutIcons
 import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
+import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.theme.Spacing
@@ -157,22 +157,25 @@ fun FilesScreen(
                     placeholder = { Text("Filter files") },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(4.dp)
+                    shape = MaterialTheme.shapes.small
                 )
-                SectionHeading("01", "Library") {
+                SectionHeading("Library") {
                     TextButton(onClick = { reload++ }) {
-                        Text("REFRESH", style = MaterialTheme.typography.labelLarge)
+                        Text("Refresh")
                     }
                 }
-                Row {
-                    TextButton(onClick = onOpenTimelapses) {
-                        Text("TIMELAPSES →", style = MaterialTheme.typography.labelLarge)
-                    }
-                    TextButton(
+                Row(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Spacing.s),
+                    modifier = Modifier.padding(bottom = Spacing.s)
+                ) {
+                    androidx.compose.material3.FilledTonalButton(
                         onClick = { picker.launch(arrayOf("*/*")) },
                         enabled = live && uploadState == null
                     ) {
-                        Text("UPLOAD", style = MaterialTheme.typography.labelLarge)
+                        Text("Upload")
+                    }
+                    androidx.compose.material3.OutlinedButton(onClick = onOpenTimelapses) {
+                        Text("Timelapses")
                     }
                 }
             }
@@ -195,7 +198,7 @@ fun FilesScreen(
         status?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.xs)
             )
@@ -205,8 +208,8 @@ fun FilesScreen(
             Plate(Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.xs)) {
                 Column {
                     Text(
-                        text = "UPLOADING · ${up.name}",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Uploading · ${up.name}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -219,7 +222,7 @@ fun FilesScreen(
                     Spacer(Modifier.height(Spacing.xxs))
                     Text(
                         text = "${(up.progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -250,7 +253,7 @@ fun FilesScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
-                TextButton(onClick = { reload++ }) { Text("TRY AGAIN") }
+                TextButton(onClick = { reload++ }) { Text("Try again") }
             }
 
             filtered.isEmpty() -> Column(Modifier.padding(horizontal = Spacing.l)) {
@@ -260,15 +263,16 @@ fun FilesScreen(
                 )
             }
 
-            else -> LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = Spacing.l, end = Spacing.l, bottom = Spacing.xxl
-                ),
-                verticalArrangement = Arrangement.spacedBy(Spacing.s)
+            else -> Plate(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l)
             ) {
-                items(filtered, key = { keyOf(it) }) { file ->
-                    val checked = selection.containsKey(keyOf(file))
-                    Plate(Modifier.fillMaxWidth()) {
+                LazyColumn {
+                    itemsIndexed(filtered, key = { _, f -> keyOf(f) }) { index, file ->
+                        val checked = selection.containsKey(keyOf(file))
+                        if (index > 0) RowDivider()
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -278,31 +282,37 @@ fun FilesScreen(
                                     },
                                     onLongClick = { toggle(file) }
                                 )
-                                .heightIn(min = 48.dp),
+                                .heightIn(min = 56.dp)
+                                .padding(vertical = Spacing.s),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                imageVector = if (file.isDirectory) ReadoutIcons.Folder else ReadoutIcons.File,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(Spacing.l))
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     text = file.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 2,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Spacer(Modifier.height(Spacing.xxs))
                                 Text(
                                     text = buildString {
-                                        if (file.isDirectory) append("folder")
+                                        if (file.isDirectory) append("Folder")
                                         else append(Format.bytes(file.sizeBytes))
                                         if (file.dateSeconds != null) {
-                                            append("  ·  ")
+                                            append(" · ")
                                             append(Format.fileDate(file.dateSeconds))
                                         }
                                         if (file.origin != "local") {
-                                            append("  ·  ")
+                                            append(" · ")
                                             append(file.origin)
                                         }
                                     },
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -359,10 +369,10 @@ fun FilesScreen(
                         }
                         reload++
                     }
-                }) { Text("DELETE", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmBatchDelete = false }) { Text("KEEP") }
+                TextButton(onClick = { confirmBatchDelete = false }) { Text("Keep") }
             }
         )
     }
@@ -376,27 +386,33 @@ private fun SelectionBar(
     onDelete: () -> Unit,
     onClear: () -> Unit
 ) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.l, vertical = Spacing.s)
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.large
     ) {
-        Text(
-            text = "$count SELECTED",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onSelectAll) {
-            Text(if (allSelected) "NONE" else "ALL", style = MaterialTheme.typography.labelLarge)
-        }
-        TextButton(onClick = onDelete) {
-            Text("DELETE", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
-        }
-        TextButton(onClick = onClear) {
-            Text("CLOSE", style = MaterialTheme.typography.labelLarge)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = Spacing.l, end = Spacing.xs)
+                .heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$count selected",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onSelectAll) {
+                Text(if (allSelected) "None" else "All")
+            }
+            TextButton(onClick = onDelete) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+            TextButton(onClick = onClear) {
+                Text("Close")
+            }
         }
     }
 }
@@ -411,10 +427,7 @@ private fun FileSheet(
     onPrint: () -> Unit,
     onDelete: () -> Unit
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl)) {
             Text(
                 text = file.name,
@@ -423,7 +436,6 @@ private fun FileSheet(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(Spacing.m))
-            DashedRule()
             Spacer(Modifier.height(Spacing.s))
             SpecRow(null, "Size", Format.bytes(file.sizeBytes))
             SpecRow(null, "Added", Format.fileDate(file.dateSeconds).ifBlank { "—" })
@@ -432,12 +444,11 @@ private fun FileSheet(
             Spacer(Modifier.height(Spacing.l))
             Button(
                 onClick = onPrint,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("START PRINT") }
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) { Text("Start print") }
             Spacer(Modifier.height(Spacing.s))
             TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
-                Text("DELETE FILE", color = MaterialTheme.colorScheme.error)
+                Text("Delete file", color = MaterialTheme.colorScheme.error)
             }
         }
     }

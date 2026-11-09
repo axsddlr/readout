@@ -5,129 +5,106 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * "Service manual" world.
+ * Fallback scheme for devices without dynamic colour (Android 11 and below, or when the user
+ * turns wallpaper colour off). Tonal palettes derived from a single cerulean seed, #00658F.
  *
- * Paper and graphite stock, one signal colour (a machine-plate yellow), rust for work in
- * progress, teal for ready, red for fault. Colour is reserved for machine state and for
- * the single primary action; everything else is ink on paper.
+ * On Android 12+ the wallpaper-derived scheme replaces this one. Machine state is mapped to
+ * scheme roles (see [ReadoutPalette]), so it reads correctly under either scheme; only the
+ * connection dot is fixed, because "the link is healthy" must never be re-tinted.
  */
 
-// -- Stock -------------------------------------------------------------------------------------
-
-private val Paper = Color(0xFFF7F2E7)
-private val PaperRaised = Color(0xFFFBF7EE)
-private val Newsprint = Color(0xFFEDE5D6)
-private val Ink = Color(0xFF1E1A16)
-private val Graphite = Color(0xFF131110)
-private val GraphiteRaised = Color(0xFF191614)
-private val GraphiteCard = Color(0xFF211D1A)
-
-// -- Signal ------------------------------------------------------------------------------------
-
-private val PlateYellow = Color(0xFFFFD43B)
-private val PlateYellowInk = Color(0xFF241C00)
-private val Rust = Color(0xFFB0411B)
-private val Teal = Color(0xFF0E6E68)
-private val TealLight = Color(0xFF7ADBD3)
-private val Alarm = Color(0xFFBA1A1A)
-private val AlarmDark = Color(0xFFFFB4AB)
-
 val ReadoutLightColors = lightColorScheme(
-    primary = Ink,
-    onPrimary = Color(0xFFFDF7EA),
-    primaryContainer = PlateYellow,
-    onPrimaryContainer = PlateYellowInk,
-    inversePrimary = Color(0xFFE8C547),
+    primary = Color(0xFF00658F),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFC7E7FF),
+    onPrimaryContainer = Color(0xFF001E2E),
+    inversePrimary = Color(0xFF85CFFF),
 
-    secondary = Color(0xFF5D5347),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEADFCB),
-    onSecondaryContainer = Ink,
+    secondary = Color(0xFF4F616E),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFD2E5F5),
+    onSecondaryContainer = Color(0xFF0B1D29),
 
-    tertiary = Teal,
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFA9F2EA),
-    onTertiaryContainer = Color(0xFF00201E),
+    tertiary = Color(0xFF63597C),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFE9DDFF),
+    onTertiaryContainer = Color(0xFF1F1635),
 
-    error = Alarm,
-    onError = Color.White,
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
 
-    background = Paper,
-    onBackground = Ink,
-    surface = PaperRaised,
-    onSurface = Ink,
-    surfaceVariant = Newsprint,
-    onSurfaceVariant = Color(0xFF4E463A),
-    surfaceTint = Ink,
-    inverseSurface = Color(0xFF342F2A),
-    inverseOnSurface = Color(0xFFF8EFE3),
+    background = Color(0xFFF6FAFE),
+    onBackground = Color(0xFF181C1F),
+    surface = Color(0xFFF6FAFE),
+    onSurface = Color(0xFF181C1F),
+    surfaceVariant = Color(0xFFDDE3EA),
+    onSurfaceVariant = Color(0xFF41484D),
+    surfaceTint = Color(0xFF00658F),
+    inverseSurface = Color(0xFF2D3134),
+    inverseOnSurface = Color(0xFFEEF1F5),
 
-    outline = Color(0xFF7F7465),
-    outlineVariant = Color(0xFFD6CBBA),
-    scrim = Color.Black,
+    outline = Color(0xFF71787E),
+    outlineVariant = Color(0xFFC1C7CE),
+    scrim = Color(0xFF000000),
 
-    surfaceDim = Color(0xFFE3DAC9),
-    surfaceBright = Color(0xFFFFFCF5),
+    surfaceDim = Color(0xFFD6DADF),
+    surfaceBright = Color(0xFFF6FAFE),
     surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF4EEE2),
-    surfaceContainer = Color(0xFFEFE8DA),
-    surfaceContainerHigh = Color(0xFFE9E1D2),
-    surfaceContainerHighest = Color(0xFFE3DAC9)
+    surfaceContainerLow = Color(0xFFF0F4F8),
+    surfaceContainer = Color(0xFFEAEEF2),
+    surfaceContainerHigh = Color(0xFFE4E8EC),
+    surfaceContainerHighest = Color(0xFFDFE3E7)
 )
 
 val ReadoutDarkColors = darkColorScheme(
-    primary = Color(0xFFF3EADA),
-    onPrimary = Color(0xFF241F19),
-    primaryContainer = PlateYellow,
-    onPrimaryContainer = PlateYellowInk,
-    inversePrimary = Color(0xFF6E5E00),
+    primary = Color(0xFF85CFFF),
+    onPrimary = Color(0xFF00344C),
+    primaryContainer = Color(0xFF004C6C),
+    onPrimaryContainer = Color(0xFFC7E7FF),
+    inversePrimary = Color(0xFF00658F),
 
-    secondary = Color(0xFFD3C4AE),
-    onSecondary = Color(0xFF38301F),
-    secondaryContainer = Color(0xFF3B342A),
-    onSecondaryContainer = Color(0xFFEFE1CC),
+    secondary = Color(0xFFB6C9D8),
+    onSecondary = Color(0xFF21323E),
+    secondaryContainer = Color(0xFF374955),
+    onSecondaryContainer = Color(0xFFD2E5F5),
 
-    tertiary = TealLight,
-    onTertiary = Color(0xFF003733),
-    tertiaryContainer = Color(0xFF00504B),
-    onTertiaryContainer = Color(0xFF9FF2EA),
+    tertiary = Color(0xFFCDC0E9),
+    onTertiary = Color(0xFF342B4B),
+    tertiaryContainer = Color(0xFF4B4263),
+    onTertiaryContainer = Color(0xFFE9DDFF),
 
-    error = AlarmDark,
+    error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
 
-    background = Graphite,
-    onBackground = Color(0xFFEEE6DA),
-    surface = GraphiteRaised,
-    onSurface = Color(0xFFEEE6DA),
-    surfaceVariant = Color(0xFF2A2621),
-    onSurfaceVariant = Color(0xFFD3C7B6),
-    surfaceTint = Color(0xFFF3EADA),
-    inverseSurface = Color(0xFFEEE6DA),
-    inverseOnSurface = Color(0xFF322E29),
+    background = Color(0xFF0F1417),
+    onBackground = Color(0xFFDFE3E7),
+    surface = Color(0xFF0F1417),
+    onSurface = Color(0xFFDFE3E7),
+    surfaceVariant = Color(0xFF41484D),
+    onSurfaceVariant = Color(0xFFC1C7CE),
+    surfaceTint = Color(0xFF85CFFF),
+    inverseSurface = Color(0xFFDFE3E7),
+    inverseOnSurface = Color(0xFF2D3134),
 
-    outline = Color(0xFF9B8F7E),
-    outlineVariant = Color(0xFF4A443A),
-    scrim = Color.Black,
+    outline = Color(0xFF8B9198),
+    outlineVariant = Color(0xFF41484D),
+    scrim = Color(0xFF000000),
 
-    surfaceDim = Color(0xFF131110),
-    surfaceBright = Color(0xFF3A3530),
-    surfaceContainerLowest = Color(0xFF0E0C0B),
-    surfaceContainerLow = Color(0xFF1B1816),
-    surfaceContainer = GraphiteCard,
-    surfaceContainerHigh = Color(0xFF2B2723),
-    surfaceContainerHighest = Color(0xFF36312C)
+    surfaceDim = Color(0xFF0F1417),
+    surfaceBright = Color(0xFF353A3D),
+    surfaceContainerLowest = Color(0xFF0A0F12),
+    surfaceContainerLow = Color(0xFF181C1F),
+    surfaceContainer = Color(0xFF1C2023),
+    surfaceContainerHigh = Color(0xFF262A2E),
+    surfaceContainerHighest = Color(0xFF313539)
 )
 
-/** Machine-state accents. Deliberately outside the M3 scheme: state must not be re-tinted by wallpaper. */
-object MachineColors {
-    val WorkLight = Rust
-    val WorkDark = Color(0xFFFF9B6B)
-    val ReadyLight = Teal
-    val ReadyDark = TealLight
-    val Plate = PlateYellow
-    val OnPlate = PlateYellowInk
+/** The only colour kept outside the scheme: a healthy link is always the same green. */
+object StateColors {
+    val ReadyLight = Color(0xFF2E7D4F)
+    val ReadyDark = Color(0xFF7ED6A0)
 }

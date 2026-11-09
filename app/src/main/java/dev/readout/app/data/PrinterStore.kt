@@ -68,7 +68,7 @@ class PrinterStore(context: Context) {
         ).apply()
     }
 
-    fun dynamicColor(): Boolean = prefs.getBoolean(KEY_DYNAMIC, false)
+    fun dynamicColor(): Boolean = prefs.getBoolean(KEY_DYNAMIC, true)
 
     fun setDynamicColor(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_DYNAMIC, enabled).apply()

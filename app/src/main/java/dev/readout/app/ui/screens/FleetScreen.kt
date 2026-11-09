@@ -1,10 +1,7 @@
 package dev.readout.app.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,11 +18,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,16 +36,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.FleetAction
 import dev.readout.app.data.FleetFile
 import dev.readout.app.data.FleetStatus
-import dev.readout.app.ui.components.DashedRule
 import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
-import dev.readout.app.ui.theme.LocalPalette
+import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
 
@@ -66,7 +64,6 @@ fun FleetScreen(
 ) {
     LaunchedEffect(Unit) { onRefresh() }
 
-    val palette = LocalPalette.current
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var confirmCancel by remember { mutableStateOf(false) }
     var showFiles by remember { mutableStateOf(false) }
@@ -86,10 +83,10 @@ fun FleetScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
             Spacer(Modifier.width(Spacing.xs))
-            Text("FLEET", style = MaterialTheme.typography.labelMedium)
+            Text("Fleet", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onRefresh) {
-                Text("REFRESH", style = MaterialTheme.typography.labelLarge)
+                Text("Refresh")
             }
         }
 
@@ -99,15 +96,15 @@ fun FleetScreen(
         ) {
             Text(
                 text = "${selected.size} of ${fleet.size} selected",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { selected = fleet.map { it.id }.toSet() }) {
-                Text("ALL", style = MaterialTheme.typography.labelLarge)
+                Text("All")
             }
             TextButton(onClick = { selected = emptySet() }) {
-                Text("NONE", style = MaterialTheme.typography.labelLarge)
+                Text("None")
             }
         }
 
@@ -135,14 +132,11 @@ fun FleetScreen(
                                 .heightIn(min = 64.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                Modifier
-                                    .size(18.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(
-                                        if (checked) palette.plate else MaterialTheme.colorScheme.surface
-                                    )
-                                    .border(1.dp, palette.hairline, RoundedCornerShape(2.dp))
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    selected = if (checked) selected - machine.id else selected + machine.id
+                                }
                             )
                             Spacer(Modifier.width(Spacing.m))
                             Column(Modifier.weight(1f)) {
@@ -156,17 +150,17 @@ fun FleetScreen(
                                 Spacer(Modifier.height(Spacing.xxs))
                                 Text(
                                     text = buildString {
-                                        append(machine.stateLabel.uppercase())
+                                        append(machine.stateLabel)
                                         machine.progress?.let {
-                                            append("  ·  ")
+                                            append(" · ")
                                             append(Format.percent(it))
                                         }
                                         machine.jobName?.let { job ->
-                                            append("  ·  ")
+                                            append(" · ")
                                             append(job)
                                         }
                                     },
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = if (machine.online) {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     } else {
@@ -182,40 +176,38 @@ fun FleetScreen(
             }
         }
 
-        Column(Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                OutlinedButton(
-                    onClick = { onAction(FleetAction.Pause, selected.toList()) },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    enabled = selected.isNotEmpty()
-                ) { Text("PAUSE", style = MaterialTheme.typography.labelLarge) }
-                OutlinedButton(
-                    onClick = { onAction(FleetAction.Resume, selected.toList()) },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    enabled = selected.isNotEmpty()
-                ) { Text("RESUME", style = MaterialTheme.typography.labelLarge) }
-            }
-            Spacer(Modifier.height(Spacing.s))
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                OutlinedButton(
-                    onClick = { showFiles = true },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    enabled = selected.isNotEmpty()
-                ) { Text("START FILE…", style = MaterialTheme.typography.labelLarge) }
-                OutlinedButton(
-                    onClick = { confirmCancel = true },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    enabled = selected.isNotEmpty()
-                ) {
-                    Text(
-                        "CANCEL",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    FilledTonalButton(
+                        onClick = { onAction(FleetAction.Pause, selected.toList()) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = selected.isNotEmpty()
+                    ) { Text("Pause") }
+                    FilledTonalButton(
+                        onClick = { onAction(FleetAction.Resume, selected.toList()) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = selected.isNotEmpty()
+                    ) { Text("Resume") }
+                }
+                Spacer(Modifier.height(Spacing.s))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    OutlinedButton(
+                        onClick = { showFiles = true },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = selected.isNotEmpty()
+                    ) { Text("Start file…") }
+                    OutlinedButton(
+                        onClick = { confirmCancel = true },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = selected.isNotEmpty()
+                    ) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -235,10 +227,10 @@ fun FleetScreen(
                 TextButton(onClick = {
                     confirmCancel = false
                     onAction(FleetAction.Cancel, selected.toList())
-                }) { Text("CANCEL ALL", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Cancel all", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmCancel = false }) { Text("KEEP PRINTING") }
+                TextButton(onClick = { confirmCancel = false }) { Text("Keep printing") }
             }
         )
     }
@@ -303,17 +295,17 @@ private fun FleetFilePicker(
                             )
                             Text(
                                 text = "on ${file.printerIds.size} of ${printerIds.size} selected",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        DashedRule()
+                        RowDivider()
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("CLOSE") }
+            TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
 }

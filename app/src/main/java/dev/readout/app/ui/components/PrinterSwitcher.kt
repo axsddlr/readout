@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -16,7 +15,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import dev.readout.app.data.PrinterConfig
 import dev.readout.app.ui.theme.Spacing
 
@@ -34,14 +32,11 @@ fun PrinterSwitcherSheet(
     onOpenFleet: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl)) {
             Text(
-                text = "PRINTERS",
-                style = MaterialTheme.typography.labelMedium,
+                text = "Printers",
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(Spacing.s))
@@ -62,13 +57,13 @@ fun PrinterSwitcherSheet(
                         )
                         Text(
                             text = instance.displayHost,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = if (active) "ACTIVE" else "USE",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = if (active) "Active" else "Use",
+                        style = MaterialTheme.typography.labelLarge,
                         color = if (active) {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         } else {
@@ -76,7 +71,7 @@ fun PrinterSwitcherSheet(
                         }
                     )
                 }
-                DashedRule()
+                RowDivider()
             }
             Spacer(Modifier.height(Spacing.s))
             TextButton(onClick = onOpenFleet) {

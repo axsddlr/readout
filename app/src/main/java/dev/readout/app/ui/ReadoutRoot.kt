@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,7 +23,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -174,11 +171,11 @@ private fun MainShell(vm: ReadoutViewModel) {
                     Masthead(
                         printerName = state.config?.name ?: "Printer",
                         connectionLabel = when (state.phase) {
-                            ConnectionPhase.Live -> "LIVE"
-                            ConnectionPhase.Connecting -> "LINKING"
-                            ConnectionPhase.Offline -> "OFFLINE"
-                            ConnectionPhase.Fault -> "NO LINK"
-                            ConnectionPhase.Unconfigured -> "SETUP"
+                            ConnectionPhase.Live -> "Live"
+                            ConnectionPhase.Connecting -> "Linking"
+                            ConnectionPhase.Offline -> "Offline"
+                            ConnectionPhase.Fault -> "No link"
+                            ConnectionPhase.Unconfigured -> "Setup"
                         },
                         live = state.phase == ConnectionPhase.Live,
                         onClick = { showSwitcher = true },
@@ -190,12 +187,11 @@ private fun MainShell(vm: ReadoutViewModel) {
                             )
                         }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             },
             bottomBar = {
                 if (!expanded) {
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    NavigationBar {
                         Destination.entries.forEachIndexed { index, item ->
                             NavigationBarItem(
                                 selected = tabIndex == index && !showSettings,
@@ -225,7 +221,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                     .then(if (expanded) Modifier.navigationBarsPadding() else Modifier)
             ) {
                 if (expanded) {
-                    NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
+                    NavigationRail {
                         Destination.entries.forEachIndexed { index, item ->
                             NavigationRailItem(
                                 selected = tabIndex == index && !showSettings,
@@ -243,10 +239,6 @@ private fun MainShell(vm: ReadoutViewModel) {
                             )
                         }
                     }
-                    VerticalDivider(
-                        modifier = Modifier.fillMaxHeight(),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
                 }
 
                 Box(Modifier.weight(1f)) {
@@ -374,7 +366,7 @@ private fun IconAction(    icon: ImageVector,
         androidx.compose.material3.Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurface
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

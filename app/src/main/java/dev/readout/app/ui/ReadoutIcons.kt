@@ -90,4 +90,28 @@ object ReadoutIcons {
             }
         }.build()
     }
+
+    val Folder: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Folder", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(3f, 6f); lineTo(3f, 18f); lineTo(21f, 18f); lineTo(21f, 8f)
+                lineTo(12f, 8f); lineTo(10f, 6f); close()
+            }
+        }.build()
+    }
+
+    val File: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "File", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(6f, 3f); lineTo(14f, 3f); lineTo(19f, 8f); lineTo(19f, 21f); lineTo(6f, 21f); close()
+                moveTo(13f, 4.5f); lineTo(13f, 9f); lineTo(17.5f, 9f); close()
+            }
+        }.build()
+    }
 }

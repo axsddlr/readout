@@ -1,8 +1,6 @@
 package dev.readout.app.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,13 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.readout.app.data.AppKeyState
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.DiscoveredPrinter
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.SectionHeading
-import dev.readout.app.ui.theme.LocalPalette
 import dev.readout.app.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
@@ -64,7 +60,6 @@ fun ConnectScreen(
     onCancelAppKey: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val palette = LocalPalette.current
     val scope = rememberCoroutineScope()
     var address by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
@@ -87,46 +82,22 @@ fun ConnectScreen(
             Spacer(Modifier.height(Spacing.m))
         }
 
-        // -- Title block -------------------------------------------------------------------
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "READOUT",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(Spacing.s))
-                Text(
-                    text = "Your printer,\non the record.",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(Modifier.height(Spacing.m))
-                Text(
-                    text = "A local control surface for one OctoPrint machine. No account, no cloud, " +
-                        "no telemetry — your key never leaves this device.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.width(Spacing.l))
-            Box(
-                Modifier
-                    .size(56.dp)
-                    .background(palette.plate, RoundedCornerShape(2.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "01",
-                    style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 1.sp),
-                    color = palette.onPlate
-                )
-            }
-        }
+        Text(
+            text = "Readout",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(Spacing.s))
+        Text(
+            text = "A local control surface for one OctoPrint machine. No account, no cloud, " +
+                "no telemetry — your key never leaves this device.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-        SectionHeading("01", "On this network") {
+        SectionHeading("On this network") {
             TextButton(onClick = onDiscover) {
-                Text("SCAN", style = MaterialTheme.typography.labelLarge)
+                Text("Scan", style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -173,7 +144,7 @@ fun ConnectScreen(
                         )
                         Text(
                             text = "${printer.host}:${printer.port}",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -183,12 +154,12 @@ fun ConnectScreen(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                             contentColor = MaterialTheme.colorScheme.onSurface
                         )
-                    ) { Text("USE") }
+                    ) { Text("Use") }
                 }
             }
         }
 
-        SectionHeading("02", "Address and key")
+        SectionHeading("Address and key")
 
         OutlinedTextField(
             value = address,
@@ -197,7 +168,7 @@ fun ConnectScreen(
             placeholder = { Text("octopi.local or 192.168.1.42:5000") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.m))
         OutlinedTextField(
@@ -207,12 +178,12 @@ fun ConnectScreen(
             placeholder = { Text("A1B2C3…") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.s))
         Text(
             text = "OctoPrint → Settings → API Key. Stored in this app's private storage.",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
@@ -239,8 +210,7 @@ fun ConnectScreen(
                 }
             },
             enabled = !submitting && address.isNotBlank() && key.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(4.dp)
+            modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
             if (submitting) {
                 CircularProgressIndicator(
@@ -250,7 +220,7 @@ fun ConnectScreen(
                 )
                 Spacer(Modifier.width(Spacing.m))
             }
-            Text(if (submitting) "CHECKING" else "CONNECT", style = MaterialTheme.typography.labelLarge)
+            Text(if (submitting) "Checking" else "Connect", style = MaterialTheme.typography.labelLarge)
         }
 
         Spacer(Modifier.height(Spacing.m))
@@ -259,44 +229,47 @@ fun ConnectScreen(
                 OutlinedButton(
                     onClick = { onRequestAccess(address.trim()) },
                     enabled = address.isNotBlank() && !submitting,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(4.dp)
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
-                    Text("REQUEST ACCESS WITH APP KEY", style = MaterialTheme.typography.labelLarge)
+                    Text("Request access with app key", style = MaterialTheme.typography.labelLarge)
                 }
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text = "For printers with two-factor login. OctoPrint asks an operator to approve " +
                         "this app once; no key is copied by hand.",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             AppKeyState.Waiting -> {
-                Plate(Modifier.fillMaxWidth()) {
-                    Column {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Column(Modifier.padding(Spacing.l)) {
                         Text(
-                            text = "WAITING FOR APPROVAL",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "Waiting for approval",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Spacer(Modifier.height(Spacing.xs))
                         Text(
                             text = "Open OctoPrint → Settings → Application Keys and allow " +
                                 "“Readout”. This screen updates on its own.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Spacer(Modifier.height(Spacing.s))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Spacer(Modifier.width(Spacing.m))
-                            TextButton(onClick = onCancelAppKey) { Text("CANCEL") }
+                            TextButton(onClick = onCancelAppKey) { Text("Cancel") }
                         }
                     }
                 }
@@ -314,7 +287,7 @@ fun ConnectScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
-                TextButton(onClick = onCancelAppKey) { Text("TRY AGAIN") }
+                TextButton(onClick = onCancelAppKey) { Text("Try again") }
             }
         }
 

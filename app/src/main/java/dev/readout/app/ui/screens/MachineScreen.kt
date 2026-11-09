@@ -10,13 +10,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,11 +36,14 @@ import dev.readout.app.data.MachineState
 import dev.readout.app.data.PowerSource
 import dev.readout.app.data.PowerSwitch
 import dev.readout.app.data.PrinterSnapshot
-import dev.readout.app.ui.components.DashedRule
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.SectionHeading
+import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.components.SpecRow
+import dev.readout.app.ui.components.TileGrid
+import dev.readout.app.ui.components.TemperatureTile
 import dev.readout.app.ui.components.TemperatureSheet
+import dev.readout.app.ui.theme.CodeStyle
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
 
@@ -76,17 +80,15 @@ fun MachineScreen(
             .padding(horizontal = Spacing.l)
     ) {
         if (powerSwitches.isNotEmpty()) {
-            SectionHeading("00", "Power")
+            SectionHeading("Power")
             Plate(Modifier.fillMaxWidth()) {
                 Column {
                     powerSwitches.forEachIndexed { index, switch ->
                         if (index > 0) {
-                            Spacer(Modifier.height(Spacing.s))
-                            DashedRule()
-                            Spacer(Modifier.height(Spacing.s))
+                            RowDivider()
                         }
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().padding(vertical = Spacing.s),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -104,47 +106,38 @@ fun MachineScreen(
                                         switch.on -> "OctoRelay · on"
                                         else -> "OctoRelay · off"
                                     },
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Button(
-                                onClick = { onTogglePower(switch) },
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.height(48.dp)
-                            ) {
-                                Text(if (switch.on) "TURN OFF" else "TURN ON")
-                            }
+                            Switch(
+                                checked = switch.on,
+                                onCheckedChange = { onTogglePower(switch) }
+                            )
                         }
                     }
                 }
             }
         }
 
-        SectionHeading("01", "Temperatures")
-        Plate(Modifier.fillMaxWidth()) {
-            Column {
-                val temperatures = snapshot?.temperatures.orEmpty()
-                if (temperatures.isEmpty()) {
-                    Text(
-                        "No components reported. Is the printer connected to OctoPrint?",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                temperatures.forEachIndexed { index, component ->
-                    SpecRow(
-                        number = index + 1,
-                        label = component.label,
-                        value = Format.targetAndActual(component.actual, component.target),
-                        secondary = "tap to set a target",
-                        onClick = { editing = component }
-                    )
-                }
+        SectionHeading("Temperatures")
+        val temperatures = snapshot?.temperatures.orEmpty()
+        if (temperatures.isEmpty()) {
+            Plate(Modifier.fillMaxWidth()) {
+                Text(
+                    "No components reported. Is the printer connected to OctoPrint?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = Spacing.s)
+                )
+            }
+        } else {
+            TileGrid(temperatures) { c, m ->
+                TemperatureTile(c, m, onClick = { editing = c })
             }
         }
 
-        SectionHeading("02", "Movement")
+        SectionHeading("Movement")
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             listOf(1f, 10f, 50f).forEach { value ->
                 FilterChip(
@@ -173,11 +166,10 @@ fun MachineScreen(
         OutlinedButton(
             onClick = onHome,
             enabled = !busy,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(4.dp)
-        ) { Text("HOME ALL AXES") }
+            modifier = Modifier.fillMaxWidth().height(50.dp)
+        ) { Text("Home all axes") }
 
-        SectionHeading("03", "Extrude")
+        SectionHeading("Extrude")
         OutlinedTextField(
             value = extrudeAmount,
             onValueChange = { extrudeAmount = it.filter { ch -> ch.isDigit() }.take(3) },
@@ -187,26 +179,24 @@ fun MachineScreen(
                 keyboardType = KeyboardType.Number
             ),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.s))
         val amount = extrudeAmount.toFloatOrNull() ?: 0f
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            Button(
+            FilledTonalButton(
                 onClick = { onExtrude(amount) },
                 enabled = !busy && amount > 0f,
-                modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("EXTRUDE") }
+                modifier = Modifier.weight(1f).height(52.dp)
+            ) { Text("Extrude") }
             OutlinedButton(
                 onClick = { onExtrude(-amount) },
                 enabled = !busy && amount > 0f,
-                modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("RETRACT") }
+                modifier = Modifier.weight(1f).height(52.dp)
+            ) { Text("Retract") }
         }
 
-        SectionHeading("04", "Command")
+        SectionHeading("Command")
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             OutlinedTextField(
                 value = command,
@@ -214,8 +204,9 @@ fun MachineScreen(
                 label = { Text("G-code") },
                 placeholder = { Text("G28 X Y") },
                 singleLine = true,
+                textStyle = CodeStyle,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(4.dp)
+                shape = MaterialTheme.shapes.small
             )
             Spacer(Modifier.width(Spacing.s))
             Button(
@@ -229,23 +220,22 @@ fun MachineScreen(
                     }
                 },
                 enabled = !busy && command.isNotBlank(),
-                modifier = Modifier.height(56.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("SEND") }
+                modifier = Modifier.height(56.dp)
+            ) { Text("Send") }
         }
         Spacer(Modifier.height(Spacing.s))
         if (history.isEmpty()) {
             Text(
                 "Commands are written to the printer, not into a terminal session. The printer's " +
                     "own response log stays in OctoPrint.",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             history.forEach { line ->
                 Text(
                     text = "› $line",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = CodeStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -254,7 +244,7 @@ fun MachineScreen(
             }
         }
 
-        SectionHeading("05", "Connection")
+        SectionHeading("Connection")
         Plate(Modifier.fillMaxWidth()) {
             Column {
                 SpecRow(null, "OctoPrint", snapshot?.octoPrintVersion ?: "unknown")
@@ -273,15 +263,13 @@ fun MachineScreen(
                     Button(
                         onClick = onConnectPrinter,
                         enabled = !busy,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) { Text("CONNECT") }
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) { Text("Connect") }
                     OutlinedButton(
                         onClick = onDisconnectPrinter,
                         enabled = !busy,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) { Text("DISCONNECT") }
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) { Text("Disconnect") }
                 }
             }
         }
@@ -307,11 +295,11 @@ fun MachineScreen(
 
 @Composable
 private fun JogButton(label: String, modifier: Modifier, busy: Boolean, onClick: () -> Unit) {
-    OutlinedButton(
+    FilledTonalButton(
         onClick = onClick,
         enabled = !busy,
-        modifier = modifier.height(50.dp),
-        shape = RoundedCornerShape(4.dp)
+        modifier = modifier.height(56.dp),
+        shape = MaterialTheme.shapes.large
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge)
     }

@@ -3,7 +3,6 @@ package dev.readout.app.ui.screens
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,22 +12,22 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,33 +42,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.readout.app.data.ComponentTemperature
 import dev.readout.app.data.ConnectionPhase
 import dev.readout.app.data.MachineState
 import dev.readout.app.data.PrinterSnapshot
 import dev.readout.app.data.UiState
 import dev.readout.app.ui.ReadoutIcons
-import dev.readout.app.ui.components.AnnotatedSchematic
 import dev.readout.app.ui.components.Plate
-import dev.readout.app.ui.components.RulerProgress
+import dev.readout.app.ui.components.ReadoutProgress
 import dev.readout.app.ui.components.SectionHeading
-import dev.readout.app.ui.components.SpecRow
-import dev.readout.app.ui.components.StatusPlate
+import dev.readout.app.ui.components.StatusCard
+import dev.readout.app.ui.components.StatusDot
 import dev.readout.app.ui.components.TemperatureSheet
+import dev.readout.app.ui.components.TemperatureTile
+import dev.readout.app.ui.components.TileGrid
 import dev.readout.app.ui.theme.LocalPalette
 import dev.readout.app.ui.theme.ReadoutHeroStyle
 import dev.readout.app.ui.theme.ReadoutStyle
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
+
+private val ActiveJob = setOf(
+    MachineState.Printing, MachineState.Paused, MachineState.Pausing,
+    MachineState.Resuming, MachineState.Finishing
+)
+private val Cancellable = setOf(
+    MachineState.Printing, MachineState.Paused, MachineState.Pausing, MachineState.Resuming
+)
 
 /**
- * "Now" — the sheet you look at. One plate states the machine's condition, one ruler its
- * progress, one diagram its temperatures, and one row of controls acts on it.
+ * "Now": one tonal card states the machine's condition and carries the job's progress;
+ * the primary action sits directly under it; camera and heaters follow.
  */
 @Composable
 fun NowScreen(
@@ -88,175 +93,121 @@ fun NowScreen(
     val palette = LocalPalette.current
     var editing by remember { mutableStateOf<ComponentTemperature?>(null) }
     var confirmCancel by remember { mutableStateOf(false) }
+    val machineState = snapshot?.state
 
-    Column(modifier = modifier.fillMaxSize()) {
-        StatusPlate(
-            state = snapshot?.state ?: MachineState.Unknown,
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.l)
+    ) {
+        Spacer(Modifier.height(Spacing.s))
+
+        // -- Status -------------------------------------------------------------------------
+        StatusCard(
+            state = machineState,
             stateLabel = snapshot?.stateLabel ?: when (state.phase) {
                 ConnectionPhase.Connecting -> "Connecting"
                 ConnectionPhase.Fault -> "No contact"
                 ConnectionPhase.Offline -> "Offline"
                 else -> "Ready"
             },
-            jobName = snapshot?.jobName,
-            fallbackDetail = when {
-                state.phase == ConnectionPhase.Offline -> state.errorMessage ?: "Last reading kept below"
+            detail = snapshot?.jobName ?: when {
+                state.phase == ConnectionPhase.Offline -> state.errorMessage ?: "Showing the last reading"
                 state.phase == ConnectionPhase.Fault -> state.errorMessage ?: "The printer did not answer"
-                else -> state.config?.displayHost ?: "No machine"
+                machineState == MachineState.Error -> "The machine reported a fault"
+                machineState == MachineState.Disconnected -> "OctoPrint is not connected to a printer"
+                machineState == MachineState.Starting -> "Bringing the machine up"
+                snapshot == null -> "Waiting for the first reading"
+                else -> "Nothing is printing"
             }
+        ) {
+            if (snapshot != null && machineState in ActiveJob) {
+                JobProgress(snapshot)
+            }
+        }
+
+        // -- Actions ------------------------------------------------------------------------
+        Spacer(Modifier.height(Spacing.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            val primaryModifier = Modifier.weight(1f).heightIn(min = 56.dp)
+            when (machineState) {
+                MachineState.Printing -> Button(onClick = onPause, modifier = primaryModifier) {
+                    Icon(ReadoutIcons.Pause, contentDescription = null)
+                    Spacer(Modifier.width(Spacing.s))
+                    Text("Pause")
+                }
+
+                MachineState.Paused -> Button(onClick = onResume, modifier = primaryModifier) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(Spacing.s))
+                    Text("Resume")
+                }
+
+                else -> Button(onClick = onOpenFiles, modifier = primaryModifier) {
+                    Text("Start a print")
+                }
+            }
+
+            if (machineState in Cancellable) {
+                OutlinedButton(
+                    onClick = { confirmCancel = true },
+                    modifier = Modifier.heightIn(min = 56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Cancel")
+                }
+            } else {
+                FilledTonalButton(onClick = onOpenMachine, modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text("Machine")
+                }
+            }
+        }
+
+        // -- Camera -------------------------------------------------------------------------
+        SectionHeading("Camera")
+        CameraCard(
+            enabled = state.phase == ConnectionPhase.Live,
+            configured = state.config?.webcamUrl != null,
+            stateLabel = snapshot?.stateLabel,
+            fetchFrame = fetchFrame,
+            onConfigure = onOpenSettings
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.l)
-        ) {
-            Spacer(Modifier.height(Spacing.l))
-
-            // -- Job sheet -----------------------------------------------------------------
-            if (snapshot?.state == MachineState.Printing ||
-                snapshot?.state == MachineState.Paused ||
-                snapshot?.state == MachineState.Pausing ||
-                snapshot?.state == MachineState.Resuming ||
-                snapshot?.state == MachineState.Finishing
-            ) {
-                JobSheet(snapshot = snapshot, onCancelRequested = { confirmCancel = true })
-            } else {
-                IdleSheet(snapshot = snapshot, onOpenFiles = onOpenFiles)
-            }
-
-            // -- Controls ------------------------------------------------------------------
-            Spacer(Modifier.height(Spacing.l))
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-                when (snapshot?.state) {
-                    MachineState.Printing -> Button(
-                        onClick = onPause,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("PAUSE", style = MaterialTheme.typography.labelLarge)
-                    }
-
-                    MachineState.Paused -> Button(
-                        onClick = onResume,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("RESUME", style = MaterialTheme.typography.labelLarge)
-                    }
-
-                    else -> Button(
-                        onClick = onOpenFiles,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("OPEN FILES", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-
-                if (snapshot?.state in setOf(
-                        MachineState.Printing, MachineState.Paused,
-                        MachineState.Pausing, MachineState.Resuming
-                    )
-                ) {
-                    OutlinedButton(
-                        onClick = { confirmCancel = true },
-                        modifier = Modifier.height(52.dp),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("CANCEL", style = MaterialTheme.typography.labelLarge)
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = onOpenMachine,
-                        modifier = Modifier.height(52.dp),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("MACHINE", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-
-            // -- Camera --------------------------------------------------------------------
-            SectionHeading("02", "Camera") {
-                Text(
-                    text = "2 s",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            CameraPlate(
-                enabled = state.phase == ConnectionPhase.Live,
-                configured = state.config?.webcamUrl != null,
-                fetchFrame = fetchFrame,
-                onConfigure = onOpenSettings
-            )
-
-            // -- Temperatures --------------------------------------------------------------
-            SectionHeading("03", "Temperatures")
-
+        // -- Temperatures -------------------------------------------------------------------
+        SectionHeading("Temperatures")
+        val temperatures = snapshot?.temperatures.orEmpty()
+        if (temperatures.isEmpty()) {
             Plate(Modifier.fillMaxWidth()) {
-                Column {
-                    val temperatures = snapshot?.temperatures.orEmpty()
-                    if (temperatures.isEmpty()) {
-                        Text(
-                            "No temperature reported yet.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        AnnotatedSchematic(components = temperatures)
-                        Spacer(Modifier.height(Spacing.s))
-                        temperatures.forEachIndexed { index, component ->
-                            SpecRow(
-                                number = index + 1,
-                                label = component.label,
-                                value = Format.targetAndActual(component.actual, component.target),
-                                secondary = when {
-                                    component.isHeating -> "heating to ${component.target.toInt()}°"
-                                    component.isAtTarget -> "at temperature"
-                                    component.target > 0f -> "cooling to ${component.target.toInt()}°"
-                                    else -> "off"
-                                },
-                                onClick = { editing = component }
-                            )
-                        }
-                        Text(
-                            text = "Tap a component to set its target.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(Spacing.l))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(6.dp)
-                        .background(
-                            if (state.phase == ConnectionPhase.Live) palette.ready else palette.work,
-                            RoundedCornerShape(3.dp)
-                        )
-                )
-                Spacer(Modifier.width(Spacing.s))
                 Text(
-                    text = buildString {
-                        append(snapshot?.octoPrintVersion ?: "OctoPrint")
-                        append(" · ")
-                        append(Format.age(state.lastUpdateMs))
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    "No temperature reported yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = Spacing.s)
                 )
             }
-            Spacer(Modifier.height(Spacing.xxl))
+        } else {
+            TileGrid(temperatures) { component, tileModifier ->
+                TemperatureTile(component, tileModifier, onClick = { editing = component })
+            }
         }
+
+        // -- Provenance ---------------------------------------------------------------------
+        Spacer(Modifier.height(Spacing.l))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusDot(
+                if (state.phase == ConnectionPhase.Live) palette.ready else MaterialTheme.colorScheme.outline,
+                size = 6.dp
+            )
+            Spacer(Modifier.width(Spacing.s))
+            Text(
+                text = if (state.lastUpdateMs == null) "No reading yet" else
+                    "${snapshot?.octoPrintVersion ?: "OctoPrint"} · updated ${Format.age(state.lastUpdateMs)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(Spacing.xxl))
     }
 
     editing?.let { component ->
@@ -274,122 +225,71 @@ fun NowScreen(
         AlertDialog(
             onDismissRequest = { confirmCancel = false },
             title = { Text("Cancel this print?") },
-            text = {
-                Text("The machine will stop where it is. This cannot be undone from the app.")
-            },
+            text = { Text("The machine will stop where it is. This cannot be undone from the app.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmCancel = false
                     onCancel()
-                }) { Text("CANCEL PRINT", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Cancel print", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmCancel = false }) { Text("KEEP PRINTING") }
+                TextButton(onClick = { confirmCancel = false }) { Text("Keep printing") }
             }
         )
     }
 }
 
+/** Percentage, bar, and times — drawn inside the status card, in its content colour. */
 @Composable
-private fun JobSheet(snapshot: PrinterSnapshot, onCancelRequested: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Column {
-        Row(verticalAlignment = Alignment.Bottom) {
+private fun JobProgress(snapshot: PrinterSnapshot) {
+    val content = androidx.compose.material3.LocalContentColor.current
+    val muted = content.copy(alpha = 0.72f)
+    Spacer(Modifier.height(Spacing.xl))
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(Format.percent(snapshot.progress), style = ReadoutHeroStyle, color = content)
+        Spacer(Modifier.weight(1f))
+        if (snapshot.layer != null && snapshot.layerCount != null) {
             Text(
-                text = Format.percent(snapshot.progress),
-                style = ReadoutHeroStyle,
-                color = scheme.onSurface
+                "Layer ${snapshot.layer} of ${snapshot.layerCount}",
+                style = MaterialTheme.typography.labelLarge,
+                color = muted,
+                modifier = Modifier.padding(bottom = Spacing.s)
             )
-            Spacer(Modifier.width(Spacing.m))
-            Column(Modifier.padding(bottom = Spacing.xs)) {
-                Text(
-                    text = "COMPLETE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant
-                )
-                if (snapshot.layer != null && snapshot.layerCount != null) {
-                    Text(
-                        text = "layer ${snapshot.layer} / ${snapshot.layerCount}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant
-                    )
-                }
-            }
         }
+    }
+    Spacer(Modifier.height(Spacing.m))
+    ReadoutProgress(progress = snapshot.progress, color = content, trackColor = content.copy(alpha = 0.18f))
+    Spacer(Modifier.height(Spacing.l))
+    Row(Modifier.fillMaxWidth()) {
+        Metric("Elapsed", Format.duration(snapshot.printTimeSeconds), Modifier.weight(1f))
+        Metric("Left", Format.eta(snapshot.printTimeLeftSeconds), Modifier.weight(1f))
+    }
+    Format.etaOrigin(snapshot.etaOrigin)?.let { note ->
         Spacer(Modifier.height(Spacing.s))
-        RulerProgress(progress = snapshot.progress)
-        Spacer(Modifier.height(Spacing.m))
-        Row(Modifier.fillMaxWidth()) {
-            Metric("ELAPSED", Format.duration(snapshot.printTimeSeconds), Modifier.weight(1f))
-            Metric("REMAINING", Format.eta(snapshot.printTimeLeftSeconds), Modifier.weight(1f))
-        }
-        Format.etaOrigin(snapshot.etaOrigin)?.let { note ->
-            Spacer(Modifier.height(Spacing.s))
-            Text(
-                text = note,
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant
-            )
-        }
+        Text(note, style = MaterialTheme.typography.bodySmall, color = muted)
     }
 }
 
 @Composable
 private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
+    val content = androidx.compose.material3.LocalContentColor.current
     Column(modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(Spacing.xxs))
-        Text(text = value, style = ReadoutStyle, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = content.copy(alpha = 0.72f))
+        Text(value, style = ReadoutStyle, color = content)
     }
 }
 
 @Composable
-private fun IdleSheet(snapshot: PrinterSnapshot?, onOpenFiles: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Column {
-        Text(
-            text = when (snapshot?.state) {
-                MachineState.Error -> "The machine reported a fault."
-                MachineState.Disconnected -> "OctoPrint is not connected to a printer."
-                MachineState.Starting -> "Bringing the machine up."
-                else -> if (snapshot == null) "Waiting for the first reading." else "The machine is idle."
-            },
-            style = MaterialTheme.typography.titleLarge,
-            color = scheme.onSurface
-        )
-        Spacer(Modifier.height(Spacing.s))
-        Text(
-            text = if (snapshot == null) {
-                "Readout asks the printer for its state every two seconds. If this persists, " +
-                    "open Settings and check the address."
-            } else {
-                "No job is running. Start one from the file library, or use the machine sheet " +
-                    "to heat, home, or send G-code."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(Spacing.m))
-        TextButton(onClick = onOpenFiles, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-            Text("Browse files →", style = MaterialTheme.typography.labelLarge)
-        }
-    }
-}
-
-@Composable
-private fun CameraPlate(
+private fun CameraCard(
     enabled: Boolean,
     configured: Boolean,
+    stateLabel: String?,
     fetchFrame: suspend () -> ByteArray?,
     onConfigure: () -> Unit
 ) {
     var frame by remember { mutableStateOf<ImageBitmap?>(null) }
     var attempted by remember { mutableStateOf(false) }
-    val palette = LocalPalette.current
+    val scheme = MaterialTheme.colorScheme
 
     LaunchedEffect(enabled, configured) {
         if (!enabled || !configured) return@LaunchedEffect
@@ -408,26 +308,20 @@ private fun CameraPlate(
     if (!configured) {
         Plate(Modifier.fillMaxWidth()) {
             Row(
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().padding(vertical = Spacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = ReadoutIcons.Camera,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(Spacing.m))
+                Icon(ReadoutIcons.Camera, contentDescription = null, tint = scheme.onSurfaceVariant)
+                Spacer(Modifier.width(Spacing.l))
                 Column(Modifier.weight(1f)) {
-                    Text("No camera configured", style = MaterialTheme.typography.bodyMedium)
+                    Text("No camera yet", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Add a snapshot URL to see the print.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Add a snapshot URL to watch the print.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant
                     )
                 }
-                TextButton(onClick = onConfigure) {
-                    Text("SET UP", style = MaterialTheme.typography.labelLarge)
-                }
+                TextButton(onClick = onConfigure) { Text("Set up") }
             }
         }
         return
@@ -437,9 +331,8 @@ private fun CameraPlate(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+            .clip(MaterialTheme.shapes.large)
+            .background(scheme.surfaceContainerHigh)
     ) {
         val current = frame
         if (current != null) {
@@ -449,19 +342,19 @@ private fun CameraPlate(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(Spacing.s)
-                    .background(palette.plate, RoundedCornerShape(2.dp))
-                    .padding(horizontal = Spacing.s, vertical = Spacing.xxs),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "CAM 01",
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                    color = palette.onPlate
-                )
+            if (stateLabel != null) {
+                Surface(
+                    modifier = Modifier.align(Alignment.TopStart).padding(Spacing.m),
+                    shape = CircleShape,
+                    color = scheme.inverseSurface.copy(alpha = 0.72f),
+                    contentColor = scheme.inverseOnSurface
+                ) {
+                    Text(
+                        stateLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                    )
+                }
             }
         } else {
             Column(
@@ -470,14 +363,14 @@ private fun CameraPlate(
             ) {
                 Text(
                     text = if (!attempted || !enabled) "Waiting for a camera frame" else "No camera image",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = scheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text = "Check the camera URL in Settings.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant
                 )
             }
         }

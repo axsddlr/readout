@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wallpaper-derived dynamic colours (Android 12+). Error colours stay static. -->
+    <color name="widget_background">@android:color/system_neutral1_50</color>
+    <color name="widget_ink">@android:color/system_neutral1_900</color>
+    <color name="widget_muted">@android:color/system_neutral2_700</color>
+    <color name="widget_track">@android:color/system_neutral2_200</color>
+    <color name="widget_plate">@android:color/system_accent1_100</color>
+    <color name="widget_on_plate">@android:color/system_accent1_900</color>
+    <color name="widget_band_paused">@android:color/system_accent3_100</color>
+    <color name="widget_on_band_paused">@android:color/system_accent3_900</color>
+    <color name="widget_band_idle">@android:color/system_neutral2_100</color>
+</resources>

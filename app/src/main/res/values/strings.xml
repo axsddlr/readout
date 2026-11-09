@@ -9,13 +9,13 @@
     <string name="widget_camera_description">Camera view of the print</string>
     <string name="widget_camera_empty">No camera frame yet</string>
 
-    <string name="widget_state_placeholder">PRINTING</string>
+    <string name="widget_state_placeholder">Printing</string>
     <string name="widget_job_placeholder">No job</string>
     <string name="widget_progress_description">Print progress</string>
     <string name="widget_percent_placeholder">—</string>
     <string name="widget_eta_placeholder"></string>
-    <string name="widget_nozzle">NOZZLE</string>
-    <string name="widget_bed">BED</string>
+    <string name="widget_nozzle">Nozzle</string>
+    <string name="widget_bed">Bed</string>
     <string name="widget_temperature_placeholder">—</string>
 
     <string name="notification_status_channel">Print status</string>

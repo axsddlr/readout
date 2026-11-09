@@ -10,15 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.ComponentTemperature
+import dev.readout.app.ui.theme.ReadoutHeroStyle
 import dev.readout.app.ui.theme.Spacing
 import kotlin.math.roundToInt
 
@@ -50,21 +50,18 @@ fun TemperatureSheet(
     val initial = if (component.target > 0f) component.target else presets[2].toFloat()
     var value by remember(component.key) { mutableFloatStateOf(initial) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl)) {
             Text(
-                text = component.label.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
+                text = component.label,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(Spacing.xs))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "${value.roundToInt()}°",
-                    style = MaterialTheme.typography.displayMedium,
+                    style = ReadoutHeroStyle,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(Modifier.width(Spacing.m))
@@ -89,7 +86,7 @@ fun TemperatureSheet(
                     FilterChip(
                         selected = value.roundToInt() == preset,
                         onClick = { value = preset.toFloat() },
-                        label = { Text(if (preset == 0) "OFF" else "$preset°") }
+                        label = { Text(if (preset == 0) "Off" else "$preset°") }
                     )
                 }
             }
@@ -97,14 +94,12 @@ fun TemperatureSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                 Button(
                     onClick = { onApply(value.roundToInt()) },
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(4.dp)
-                ) { Text("SET TARGET") }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f).height(50.dp)
+                ) { Text("Set target") }
+                TextButton(
                     onClick = onDismiss,
-                    modifier = Modifier.height(50.dp),
-                    shape = RoundedCornerShape(4.dp)
-                ) { Text("CLOSE") }
+                    modifier = Modifier.height(50.dp)
+                ) { Text("Close") }
             }
         }
     }

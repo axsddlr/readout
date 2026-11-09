@@ -16,14 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,8 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.readout.app.data.PrinterConfig
 import dev.readout.app.data.ThemePreference
-import dev.readout.app.ui.components.DashedRule
 import dev.readout.app.ui.components.Plate
+import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.theme.Spacing
@@ -95,10 +93,10 @@ fun SettingsScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
             Spacer(Modifier.width(Spacing.xs))
-            Text("SETTINGS", style = MaterialTheme.typography.labelMedium)
+            Text("Settings", style = MaterialTheme.typography.titleLarge)
         }
 
-        SectionHeading("01", "Appearance")
+        SectionHeading("Appearance")
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             ThemePreference.entries.forEach { option ->
                 FilterChip(
@@ -107,9 +105,9 @@ fun SettingsScreen(
                     label = {
                         Text(
                             when (option) {
-                                ThemePreference.System -> "SYSTEM"
-                                ThemePreference.Light -> "LIGHT"
-                                ThemePreference.Dark -> "DARK"
+                                ThemePreference.System -> "System"
+                                ThemePreference.Light -> "Light"
+                                ThemePreference.Dark -> "Dark"
                             }
                         )
                     }
@@ -119,17 +117,18 @@ fun SettingsScreen(
         Spacer(Modifier.height(Spacing.m))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Match my wallpaper", style = MaterialTheme.typography.bodyLarge)
+                Text("Use wallpaper colours", style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        "Use the system palette instead of the service-manual colours."
+                        "Use the system palette instead of the Readout colours."
                     } else {
                         "Requires Android 12 or newer."
                     },
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Spacer(Modifier.width(Spacing.l))
             Switch(
                 checked = dynamicColor,
                 onCheckedChange = onDynamicColor,
@@ -137,22 +136,21 @@ fun SettingsScreen(
             )
         }
 
-        SectionHeading("02", "Printer")
+        SectionHeading("Printer")
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
             label = { Text("Name") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.s))
         Button(
             onClick = { onNameChange(name.trim()) },
             enabled = name.trim().isNotEmpty() && name.trim() != config?.name,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(4.dp)
-        ) { Text("SAVE NAME") }
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) { Text("Save name") }
 
         Spacer(Modifier.height(Spacing.m))
         OutlinedTextField(
@@ -162,25 +160,23 @@ fun SettingsScreen(
             placeholder = { Text("http://octopi.local/webcam/?action=snapshot") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
+            shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
             Button(
                 onClick = { onWebcamChange(webcam.trim().ifBlank { null }) },
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("SAVE URL") }
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) { Text("Save URL") }
             OutlinedButton(
                 onClick = { webcam = ""; onWebcamChange(null) },
-                modifier = Modifier.height(48.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) { Text("RESET") }
+                modifier = Modifier.height(48.dp)
+            ) { Text("Reset") }
         }
         Spacer(Modifier.height(Spacing.xs))
         Text(
             "Leave blank to use /webcam/?action=snapshot on the printer address.",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
@@ -204,13 +200,13 @@ fun SettingsScreen(
                             )
                             Text(
                                 text = instance.displayHost,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
-                            text = if (active) "ACTIVE" else "USE",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = if (active) "Active" else "Use",
+                            style = MaterialTheme.typography.labelLarge,
                             color = if (active) {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
@@ -218,9 +214,8 @@ fun SettingsScreen(
                             }
                         )
                     }
-                    DashedRule()
+                    RowDivider()
                 }
-                Spacer(Modifier.height(Spacing.s))
                 SpecRow(null, "Address", config?.displayHost ?: "—")
                 SpecRow(null, "Over transport", if (config?.baseUrl?.startsWith("https") == true) "HTTPS" else "HTTP")
                 SpecRow(null, "Key", if (config == null) "—" else "•••• " + (config.apiKey.takeLast(4)))
@@ -229,25 +224,25 @@ fun SettingsScreen(
                     onClick = onAddAnother,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                 ) {
-                    Text("ADD ANOTHER PRINTER")
+                    Text("Add another printer")
                 }
                 TextButton(
                     onClick = { confirmDisconnect = true },
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                 ) {
-                    Text("FORGET THIS PRINTER", color = MaterialTheme.colorScheme.error)
+                    Text("Forget this printer", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
 
-        SectionHeading("03", "Notifications")
+        SectionHeading("Notifications")
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Live print notification", style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = "An ongoing notification with progress and a pause action while a job runs, " +
                         "plus one alert when it finishes or stops. Also keeps home-screen widgets current.",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -271,22 +266,22 @@ fun SettingsScreen(
             )
         }
 
-        SectionHeading("04", "Home screen")
+        SectionHeading("Home screen")
         Text(
             text = "Pin a widget without leaving the app. Widgets keep themselves current and show " +
                 "the machine's state even when Readout is closed.",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(Spacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            PinButton("PRINT", Modifier.weight(1f)) {
+            PinButton("Print", Modifier.weight(1f)) {
                 pinMessage = pinResult(WidgetPinning.print(context))
             }
-            PinButton("TEMPS", Modifier.weight(1f)) {
+            PinButton("Temps", Modifier.weight(1f)) {
                 pinMessage = pinResult(WidgetPinning.temps(context))
             }
-            PinButton("CAMERA", Modifier.weight(1f)) {
+            PinButton("Camera", Modifier.weight(1f)) {
                 pinMessage = pinResult(WidgetPinning.camera(context))
             }
         }
@@ -294,7 +289,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(Spacing.xs))
             Text(
                 text = "This launcher does not support pinning; add the widgets from its widget picker.",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -302,12 +297,12 @@ fun SettingsScreen(
             Spacer(Modifier.height(Spacing.xs))
             Text(
                 text = it,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        SectionHeading("05", "About")
+        SectionHeading("About")
         Text(
             text = "Readout 1.0",
             style = MaterialTheme.typography.titleMedium
@@ -319,11 +314,11 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(Spacing.m))
-        DashedRule()
+        RowDivider()
         Spacer(Modifier.height(Spacing.m))
         Text(
             text = "No analytics, no accounts, no network calls except to the printer you configured.",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(Spacing.xxl))
@@ -338,10 +333,10 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     confirmDisconnect = false
                     onDisconnect()
-                }) { Text("FORGET", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Forget", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDisconnect = false }) { Text("KEEP") }
+                TextButton(onClick = { confirmDisconnect = false }) { Text("Keep") }
             }
         )
     }
@@ -351,8 +346,7 @@ fun SettingsScreen(
 private fun PinButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(48.dp),
-        shape = RoundedCornerShape(4.dp)
+        modifier = modifier.height(48.dp)
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge)
     }

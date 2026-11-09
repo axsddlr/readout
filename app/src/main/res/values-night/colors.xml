@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_background">#191614</color>
-    <color name="widget_outline">#4A443A</color>
-    <color name="widget_ink">#EEE6DA</color>
-    <color name="widget_muted">#D3C7B6</color>
-    <color name="widget_track">#4A443A</color>
-    <color name="widget_plate">#FFD43B</color>
-    <color name="widget_on_plate">#241C00</color>
-    <color name="widget_band_idle">#2B2723</color>
+    <color name="widget_background">#181C1F</color>
+    <color name="widget_ink">#DFE3E7</color>
+    <color name="widget_muted">#C1C7CE</color>
+    <color name="widget_track">#41484D</color>
+    <color name="widget_plate">#004C6C</color>
+    <color name="widget_on_plate">#C7E7FF</color>
+    <color name="widget_band_paused">#4C4268</color>
+    <color name="widget_on_band_paused">#E9DDFF</color>
+    <color name="widget_band_idle">#262A2E</color>
     <color name="widget_band_error">#93000A</color>
     <color name="widget_error_ink">#FFDAD6</color>
 </resources>
