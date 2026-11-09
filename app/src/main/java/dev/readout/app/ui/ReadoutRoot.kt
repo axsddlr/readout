@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -14,6 +15,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
+import dev.readout.app.data.PrinterConfig
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -149,6 +155,29 @@ private fun MainShell(vm: ReadoutViewModel) {
 
     val notify: (String) -> Unit = { message -> scope.launch { snackbarHost.showSnackbar(message) } }
 
+    // Swipe-to-remove. Undo restores the printer; the last one asks first, because removing it
+    // drops the app back to first-run and the snackbar would go with it.
+    var confirmRemoveLast by remember { mutableStateOf<PrinterConfig?>(null) }
+    val removePrinter: (PrinterConfig) -> Boolean = { config ->
+        if (state.instances.size <= 1) {
+            confirmRemoveLast = config
+            false
+        } else {
+            val wasActive = config.id == state.config?.id
+            vm.controller.forget(config.id)?.let { removed ->
+                scope.launch {
+                    val result = snackbarHost.showSnackbar(
+                        message = "Removed ${removed.name} · ${removed.displayHost}",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Long
+                    )
+                    if (result == SnackbarResult.ActionPerformed) vm.controller.restore(removed, wasActive)
+                }
+            }
+            true
+        }
+    }
+
     // The service owns its own stop; the app only asks it to start while a job is active,
     // and stops it when the user turns the feature off.
     val printActive = state.snapshot?.state in setOf(
@@ -218,7 +247,10 @@ private fun MainShell(vm: ReadoutViewModel) {
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .then(if (expanded) Modifier.navigationBarsPadding() else Modifier)
+                    // Scaffold's padding already holds the bars; consume it so imePadding()
+                    // only adds what the keyboard covers beyond them.
+                    .consumeWindowInsets(innerPadding)
+                    .imePadding()
             ) {
                 if (expanded) {
                     NavigationRail {
@@ -263,6 +295,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             instances = state.instances,
                             activeId = state.config?.id,
                             onSwitchInstance = { id -> vm.controller.switchTo(id) },
+                            onRemoveInstance = removePrinter,
                             onAddAnother = {
                                 showSettings = false
                                 vm.controller.addAnother()
@@ -336,6 +369,26 @@ private fun MainShell(vm: ReadoutViewModel) {
             }
         }
     }
+    confirmRemoveLast?.let { config ->
+        AlertDialog(
+            onDismissRequest = { confirmRemoveLast = null },
+            title = { Text("Remove ${config.name}?") },
+            text = {
+                Text("It is your only printer. Its address and API key are deleted from this device and Readout returns to setup. Your OctoPrint settings are not touched.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemoveLast = null
+                    showSwitcher = false
+                    showSettings = false
+                    vm.controller.forget(config.id)
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemoveLast = null }) { Text("Keep") }
+            }
+        )
+    }
     if (showSwitcher) {
         PrinterSwitcherSheet(
             instances = state.instances,
@@ -344,6 +397,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                 showSwitcher = false
                 vm.controller.switchTo(id)
             },
+            onRemove = removePrinter,
             onAdd = {
                 showSwitcher = false
                 vm.controller.addAnother()

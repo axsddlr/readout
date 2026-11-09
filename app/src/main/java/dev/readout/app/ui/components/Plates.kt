@@ -3,6 +3,7 @@ package dev.readout.app.ui.components
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -21,16 +23,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +55,7 @@ import dev.readout.app.data.MachineState
 import dev.readout.app.ui.theme.LocalPalette
 import dev.readout.app.ui.theme.ReadoutStyle
 import dev.readout.app.ui.theme.Spacing
+import kotlinx.coroutines.launch
 
 /**
  * Top bar: the printer's name as a chip that opens the switcher, a connection chip, and
@@ -189,11 +197,14 @@ fun ReadoutProgress(
     height: Dp = 12.dp
 ) {
     val target = (progress ?: 0f).coerceIn(0f, 1f)
-    val value = if (animationsDisabled()) target else {
-        animateFloatAsState(target, animationSpec = spring(stiffness = 50f), label = "progress").value
-    }
+    // Read the animated value inside the progress lambda, so travel redraws without recomposing.
+    val animated = animateFloatAsState(
+        targetValue = target,
+        animationSpec = if (animationsDisabled()) snap() else spring(stiffness = 50f),
+        label = "progress"
+    )
     LinearProgressIndicator(
-        progress = { value },
+        progress = { animated.value },
         modifier = modifier
             .fillMaxWidth()
             .height(height)
@@ -379,6 +390,53 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
 @Composable
 fun RowDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(modifier = modifier, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+}
+
+/**
+ * Swipe a row from end to start to remove it. The row slides over an error-toned background
+ * that says what will happen. [onRemove] returns false to cancel (for example when the caller
+ * asks for confirmation first), which springs the row back.
+ */
+@Composable
+fun SwipeToRemove(
+    label: String,
+    onRemove: () -> Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val state = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    val scheme = MaterialTheme.colorScheme
+    SwipeToDismissBox(
+        state = state,
+        modifier = modifier,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            val swiping = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(if (swiping) scheme.errorContainer else Color.Transparent)
+                    .padding(horizontal = Spacing.l),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (swiping) {
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = scheme.onErrorContainer)
+                    Spacer(Modifier.width(Spacing.s))
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = scheme.onErrorContainer)
+                }
+            }
+        },
+        onDismiss = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart && !onRemove()) {
+                scope.launch { state.reset() }
+            }
+        }
+    ) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) { content() }
+    }
 }
 
 /** Lays [items] out in rows of [columns], with even gaps. */

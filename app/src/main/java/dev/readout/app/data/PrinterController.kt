@@ -237,6 +237,7 @@ class PrinterController(context: Context) {
         _state.update {
             it.copy(
                 config = instance,
+                instances = store.instances(),
                 snapshot = null,
                 phase = ConnectionPhase.Connecting,
                 errorMessage = null,
@@ -259,6 +260,31 @@ class PrinterController(context: Context) {
             _state.update { UiState(phase = ConnectionPhase.Unconfigured, instances = emptyList()) }
         } else {
             switchTo(remaining.first().id)
+        }
+    }
+
+    /**
+     * Removes any saved printer. Forgetting the active one falls back to the next printer, or to
+     * first-run when none are left. Returns the removed config so the caller can offer undo.
+     */
+    fun forget(id: String): PrinterConfig? {
+        val target = store.instances().firstOrNull { it.id == id } ?: return null
+        if (target.id == _state.value.config?.id) {
+            forgetActive()
+        } else {
+            store.removeInstance(id)
+            _state.update { it.copy(instances = store.instances()) }
+        }
+        return target
+    }
+
+    /** Puts back a printer removed by [forget]; [makeActive] restores it as the active one. */
+    fun restore(config: PrinterConfig, makeActive: Boolean) {
+        store.saveInstance(config)
+        if (makeActive) {
+            switchTo(config.id)
+        } else {
+            _state.update { it.copy(instances = store.instances()) }
         }
     }
 

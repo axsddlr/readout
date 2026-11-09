@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +47,10 @@ import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.SpecRow
+import dev.readout.app.ui.components.SwipeToRemove
 import dev.readout.app.ui.theme.Spacing
+import dev.readout.app.util.openNotificationSettings
+import dev.readout.app.util.isPermanentlyDenied
 import dev.readout.app.widget.WidgetPinning
 
 @Composable
@@ -61,6 +65,7 @@ fun SettingsScreen(
     onDynamicColor: (Boolean) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onSwitchInstance: (String) -> Unit,
+    onRemoveInstance: (PrinterConfig) -> Boolean,
     onAddAnother: () -> Unit,
     onNameChange: (String) -> Unit,
     onWebcamChange: (String?) -> Unit,
@@ -76,7 +81,11 @@ fun SettingsScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) onNotificationsChange(true)
+        when {
+            granted -> onNotificationsChange(true)
+            // "Don't allow" is now permanent: the switch can only be turned on from system settings.
+            context.isPermanentlyDenied(Manifest.permission.POST_NOTIFICATIONS) -> context.openNotificationSettings()
+        }
     }
 
     Column(
@@ -185,6 +194,8 @@ fun SettingsScreen(
             Column {
                 instances.forEach { instance ->
                     val active = instance.id == activeId
+                    key(instance.id) {
+                    SwipeToRemove(label = "Remove", onRemove = { onRemoveInstance(instance) }) {
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -213,6 +224,8 @@ fun SettingsScreen(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
+                    }
+                    }
                     }
                     RowDivider()
                 }

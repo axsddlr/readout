@@ -13,6 +13,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.readout.app.data.PrinterConfig
@@ -28,6 +29,7 @@ fun PrinterSwitcherSheet(
     instances: List<PrinterConfig>,
     activeId: String?,
     onSelect: (String) -> Unit,
+    onRemove: (PrinterConfig) -> Boolean,
     onAdd: () -> Unit,
     onOpenFleet: () -> Unit,
     onDismiss: () -> Unit
@@ -42,11 +44,13 @@ fun PrinterSwitcherSheet(
             Spacer(Modifier.height(Spacing.s))
             instances.forEach { instance ->
                 val active = instance.id == activeId
+                key(instance.id) {
+                SwipeToRemove(label = "Remove", onRemove = { onRemove(instance) }) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !active) { onSelect(instance.id) }
-                        .padding(vertical = Spacing.m),
+                        .padding(vertical = Spacing.m, horizontal = Spacing.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -71,14 +75,24 @@ fun PrinterSwitcherSheet(
                         }
                     )
                 }
+                }
+                }
                 RowDivider()
+            }
+            if (instances.isNotEmpty()) {
+                Text(
+                    text = "Swipe a printer to the left to remove it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Spacing.s)
+                )
             }
             Spacer(Modifier.height(Spacing.s))
             TextButton(onClick = onOpenFleet) {
-                Text("Fleet view →", style = MaterialTheme.typography.labelLarge)
+                Text("Fleet view")
             }
             TextButton(onClick = onAdd) {
-                Text("Add another printer →", style = MaterialTheme.typography.labelLarge)
+                Text("Add another printer")
             }
         }
     }
