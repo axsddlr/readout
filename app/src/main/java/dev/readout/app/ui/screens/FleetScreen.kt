@@ -120,7 +120,7 @@ fun FleetScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.s),
                 modifier = Modifier.weight(1f)
             ) {
-                items(fleet, key = { it.id }) { machine ->
+                items(fleet, key = { it.id }, contentType = { "machine" }) { machine ->
                     val checked = machine.id in selected
                     Plate(Modifier.fillMaxWidth()) {
                         Row(
@@ -280,7 +280,7 @@ private fun FleetFilePicker(
                 current.isEmpty() -> Text("None of the selected printers has a file.")
 
                 else -> LazyColumn(Modifier.heightIn(max = 320.dp)) {
-                    items(current, key = { it.name }) { file ->
+                    items(current, key = { it.name }, contentType = { "file" }) { file ->
                         Column(
                             Modifier
                                 .fillMaxWidth()

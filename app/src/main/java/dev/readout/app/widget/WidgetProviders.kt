@@ -15,6 +15,7 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 
 /**
@@ -99,10 +100,20 @@ object WidgetRefresher {
         return runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
     }
 
+    /**
+     * Upper bound for one widget refresh. A dead LAN host could otherwise chain three
+     * connect+read timeouts and hold the broadcast past its goAsync() budget.
+     */
+    const val REFRESH_BUDGET_MS = 20_000L
+
+    suspend fun refreshWithinBudget(context: Context) {
+        withTimeoutOrNull(REFRESH_BUDGET_MS) { refreshFromNetwork(context) }
+    }
+
     fun refreshSafely(context: Context, finish: () -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                refreshFromNetwork(context)
+                refreshWithinBudget(context)
             } finally {
                 finish()
             }
@@ -157,19 +168,28 @@ class TempsWidgetProvider : AppWidgetProvider() {
 class CameraWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        val snapshot = WidgetCache.read(context)
-        val configured = PrinterStore(context).active()?.webcamUrl != null
-        val bitmap = runCatching {
-            val file = java.io.File(context.cacheDir, "widget-camera.jpg")
-            if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
-        }.getOrNull()
-        appWidgetIds.forEach { id ->
-            appWidgetManager.updateAppWidget(
-                id,
-                WidgetRenderer.cameraViews(context, snapshot, bitmap, configured)
-            )
+        // onUpdate runs on the main thread: the cached frame is a full camera JPEG, so decode it
+        // (and read prefs) on IO inside the same goAsync() window as the network refresh.
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val snapshot = WidgetCache.read(context)
+                val configured = PrinterStore(context).active()?.webcamUrl != null
+                val bitmap = runCatching {
+                    val file = java.io.File(context.cacheDir, "widget-camera.jpg")
+                    if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
+                }.getOrNull()
+                appWidgetIds.forEach { id ->
+                    appWidgetManager.updateAppWidget(
+                        id,
+                        WidgetRenderer.cameraViews(context, snapshot, bitmap, configured)
+                    )
+                }
+                WidgetRefresher.refreshWithinBudget(context)
+            } finally {
+                pending.finish()
+            }
         }
-        refresh(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {

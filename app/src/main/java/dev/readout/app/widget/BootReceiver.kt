@@ -18,12 +18,12 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
-        if (action != Intent.ACTION_BOOT_COMPLETED && action != "android.intent.action.QUICKBOOT_POWERON") return
+        if (action != Intent.ACTION_BOOT_COMPLETED) return
         if (!WidgetRefresher.hasWidgets(context)) return
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                WidgetRefresher.refreshFromNetwork(context)
+                WidgetRefresher.refreshWithinBudget(context)
             } finally {
                 pending.finish()
             }

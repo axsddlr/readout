@@ -62,7 +62,9 @@ import dev.readout.app.ui.theme.ReadoutHeroStyle
 import dev.readout.app.ui.theme.ReadoutStyle
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 private val ActiveJob = setOf(
     MachineState.Printing, MachineState.Paused, MachineState.Pausing,
@@ -297,9 +299,10 @@ private fun CameraCard(
             val bytes = runCatching { fetchFrame() }.getOrNull()
             attempted = true
             if (bytes != null) {
-                frame = runCatching {
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                }.getOrNull()
+                // Decode off the main thread; keep the last good frame if this one is bad.
+                withContext(Dispatchers.Default) {
+                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+                }?.let { frame = it }
             }
             delay(2_000)
         }

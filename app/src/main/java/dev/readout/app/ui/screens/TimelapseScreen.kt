@@ -160,7 +160,7 @@ fun TimelapseScreen(
                     .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l)
             ) {
                 LazyColumn {
-                    itemsIndexed(entries, key = { _, e -> e.name }) { index, entry ->
+                    itemsIndexed(entries, key = { _, e -> e.name }, contentType = { _, _ -> "timelapse" }) { index, entry ->
                         if (index > 0) RowDivider()
                         Row(
                             Modifier

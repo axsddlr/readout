@@ -270,7 +270,7 @@ fun FilesScreen(
                     .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l)
             ) {
                 LazyColumn {
-                    itemsIndexed(filtered, key = { _, f -> keyOf(f) }) { index, file ->
+                    itemsIndexed(filtered, key = { _, f -> keyOf(f) }, contentType = { _, _ -> "file" }) { index, file ->
                         val checked = selection.containsKey(keyOf(file))
                         if (index > 0) RowDivider()
                         Row(
