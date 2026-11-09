@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "dev.readout.app.wear"
-    compileSdk = 36
+    // Wear Compose Material3 1.7.x requires compileSdk 37 (AAR metadata floor).
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.readout.app.wear"
@@ -46,6 +47,14 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material:material-icons-core")
+
+    // Wear OS Compose Material 3 (latest stable).
+    val wearCompose = "1.7.1"
+    implementation("androidx.wear.compose:compose-material3:$wearCompose")
+    implementation("androidx.wear.compose:compose-foundation:$wearCompose")
+    implementation("androidx.wear.compose:compose-ui-tooling:$wearCompose")
+    debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.core:core-ktx:1.18.0")
