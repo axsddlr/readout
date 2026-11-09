@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="3D printer making a multicolor cube, Android app icon">
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#103b59"/><stop offset=".54" stop-color="#06162f"/><stop offset="1" stop-color="#09143a"/></linearGradient>
+  <linearGradient id="border" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#26f4ef"/><stop offset=".5" stop-color="#0eb7ff"/><stop offset="1" stop-color="#255dff"/></linearGradient>
+  <linearGradient id="metal" x1="0" x2="1"><stop stop-color="#a6b4cc"/><stop offset=".18" stop-color="#535f79"/><stop offset=".52" stop-color="#273a53"/><stop offset=".84" stop-color="#71859e"/><stop offset="1" stop-color="#c8d2e2"/></linearGradient>
+  <linearGradient id="gantry" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#c1d0df"/><stop offset=".4" stop-color="#4b5d78"/><stop offset="1" stop-color="#202b41"/></linearGradient>
+  <linearGradient id="head" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#8290ab"/><stop offset=".25" stop-color="#384c67"/><stop offset="1" stop-color="#121d32"/></linearGradient>
+  <linearGradient id="bed" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#53677f"/><stop offset=".26" stop-color="#273b52"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+  <linearGradient id="hot" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#ffe385"/><stop offset=".5" stop-color="#ff9a19"/><stop offset="1" stop-color="#ea4b08"/></linearGradient>
+  <linearGradient id="cubeTop" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#ffdf68"/><stop offset="1" stop-color="#ff9c17"/></linearGradient>
+  <linearGradient id="cubeLeft" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#ffb236"/><stop offset=".27" stop-color="#ff6436"/><stop offset=".53" stop-color="#a34edb"/><stop offset=".8" stop-color="#327af5"/><stop offset="1" stop-color="#00d8f2"/></linearGradient>
+  <linearGradient id="cubeRight" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#f58c12"/><stop offset=".27" stop-color="#de4479"/><stop offset=".55" stop-color="#6943c8"/><stop offset=".82" stop-color="#116ae4"/><stop offset="1" stop-color="#00b8e8"/></linearGradient>
+  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+ </defs>
+ <!-- Android friendly generous icon safe-area -->
+ <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+ <rect x="11" y="11" width="490" height="490" rx="103" fill="none" stroke="url(#border)" stroke-width="11"/>
+ <path d="M248 130 C254 58 324 48 353 129" fill="none" stroke="#04bce9" stroke-width="11" stroke-linecap="round"/>
+ <path d="M248 130 C254 58 324 48 353 129" fill="none" stroke="#a5ffff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+ <!-- structural frame -->
+ <rect x="79" y="126" width="47" height="270" rx="13" fill="url(#metal)" stroke="#9bacbf" stroke-width="2"/>
+ <rect x="386" y="126" width="47" height="270" rx="13" fill="url(#metal)" stroke="#9bacbf" stroke-width="2"/>
+ <path d="M91 139 H418" stroke="#223047" stroke-width="47" stroke-linecap="round"/>
+ <path d="M92 137 H417" stroke="url(#metal)" stroke-width="34" stroke-linecap="round"/>
+ <path d="M124 157 H387" stroke="#0f182a" stroke-width="8"/>
+ <path d="M127 195 H386" stroke="url(#gantry)" stroke-width="13" stroke-linecap="round"/>
+ <path d="M127 214 H386" stroke="#7084a3" stroke-width="4" stroke-linecap="round"/>
+ <path d="M137 176 H374" stroke="#0b1223" stroke-width="6" stroke-dasharray="5 3"/>
+ <!-- bed behind cube -->
+ <path d="M118 363 L156 342 H358 L394 363 L382 393 H130 Z" fill="url(#bed)" stroke="#849db8" stroke-width="3" stroke-linejoin="round"/>
+ <path d="M123 385 H390 L378 403 H135 Z" fill="#172741"/>
+ <path d="M142 398 H374" stroke="#00c9ef" stroke-width="5" stroke-linecap="round"/>
+ <path d="M142 398 H374" stroke="#00c9ef" stroke-width="14" opacity=".32" filter="url(#glow)"/>
+ <rect x="79" y="396" width="355" height="26" rx="10" fill="url(#metal)"/>
+ <rect x="183" y="408" width="147" height="5" rx="3" fill="#00d8ff"/>
+ <!-- multicolor printed cube -->
+ <path d="M188 291 L256 265 L324 291 L256 319 Z" fill="url(#cubeTop)" stroke="#ffef91" stroke-width="3" stroke-linejoin="round"/>
+ <path d="M188 291 L256 319 V370 L188 341 Z" fill="url(#cubeLeft)" stroke="#77d7ed" stroke-width="2"/>
+ <path d="M256 319 L324 291 V341 L256 370 Z" fill="url(#cubeRight)" stroke="#64d3ed" stroke-width="2"/>
+ <!-- layer lines -->
+ <g fill="none" stroke="#ffdc9c" stroke-opacity=".6" stroke-width="2">
+  <path d="M188 302 L256 330 L324 302"/><path d="M188 312 L256 340 L324 312"/>
+ </g>
+ <g fill="none" stroke="#90d5ff" stroke-opacity=".64" stroke-width="2">
+  <path d="M188 322 L256 350 L324 322"/><path d="M188 332 L256 360 L324 332"/>
+ </g>
+ <path d="M208 290 L256 273 L305 290 L256 310 Z" fill="none" stroke="#fff0a1" stroke-width="3" opacity=".8"/>
+ <path d="M223 286 L273 303 M236 281 L286 299 M249 277 L297 293" stroke="#ffce52" stroke-width="3" opacity=".85"/>
+ <!-- extruder head -->
+ <rect x="206" y="135" width="100" height="99" rx="15" fill="url(#head)" stroke="#9fb5cc" stroke-width="3"/>
+ <path d="M217 148 H296" stroke="#b7c6dd" opacity=".6" stroke-width="4" stroke-linecap="round"/>
+ <rect x="222" y="164" width="68" height="41" rx="8" fill="#172238" stroke="#5d7490" stroke-width="2"/>
+ <circle cx="256" cy="184.5" r="16" fill="#0a1426" stroke="#a4aec1" stroke-width="3"/>
+ <circle cx="256" cy="184.5" r="5" fill="#647a95"/>
+ <path d="M256 171 L260 181 L271 184 L260 189 L256 199 L251 189 L241 184 L251 180 Z" fill="#45566e"/>
+ <rect x="235" y="215" width="42" height="6" rx="3" fill="#12edfa"/>
+ <rect x="235" y="215" width="42" height="9" rx="5" fill="#12edfa" opacity=".6" filter="url(#glow)"/>
+ <path d="M233 234 H279 L269 255 H243 Z" fill="url(#hot)" stroke="#ffbb45" stroke-width="2"/>
+ <path d="M247 255 H265 L256 268 Z" fill="#ffb433"/>
+ <path d="M256 268 L256 279" stroke="#ffce46" stroke-width="5" stroke-linecap="round"/>
+ <path d="M256 268 L256 279" stroke="#ffaf17" stroke-width="13" opacity=".45" filter="url(#glow)"/>
+ <!-- frame finishing accents -->
+ <path d="M94 153 V379 M418 153 V379" stroke="#d4e3f6" opacity=".4" stroke-width="3"/>
+ <g fill="#0b1728" stroke="#bbcbdc" stroke-width="2"><circle cx="103" cy="148" r="4"/><circle cx="409" cy="148" r="4"/><circle cx="103" cy="404" r="4"/><circle cx="409" cy="404" r="4"/></g>
+ </svg>

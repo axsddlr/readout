@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#191614</color>
+    <color name="widget_outline">#4A443A</color>
+    <color name="widget_ink">#EEE6DA</color>
+    <color name="widget_muted">#D3C7B6</color>
+    <color name="widget_track">#4A443A</color>
+    <color name="widget_plate">#FFD43B</color>
+    <color name="widget_on_plate">#241C00</color>
+    <color name="widget_band_idle">#2B2723</color>
+    <color name="widget_band_error">#93000A</color>
+    <color name="widget_error_ink">#FFDAD6</color>
+</resources>

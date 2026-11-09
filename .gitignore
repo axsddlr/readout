@@ -1,0 +1,23 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Design/process tooling, not part of the app
+.impeccable/
+
+# Build outputs and signing material
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties
+
+# OS noise
+.DS_Store
+Thumbs.db

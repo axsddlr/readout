@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Readout</string>
+
+    <string name="widget_label_print">Readout print</string>
+    <string name="widget_label_temps">Readout temperatures</string>
+    <string name="widget_print_description">Machine state, job and progress</string>
+    <string name="widget_temps_description">Nozzle and bed temperatures</string>
+    <string name="widget_camera_description">Camera view of the print</string>
+    <string name="widget_camera_empty">No camera frame yet</string>
+
+    <string name="widget_state_placeholder">PRINTING</string>
+    <string name="widget_job_placeholder">No job</string>
+    <string name="widget_progress_description">Print progress</string>
+    <string name="widget_percent_placeholder">—</string>
+    <string name="widget_eta_placeholder"></string>
+    <string name="widget_nozzle">NOZZLE</string>
+    <string name="widget_bed">BED</string>
+    <string name="widget_temperature_placeholder">—</string>
+
+    <string name="notification_status_channel">Print status</string>
+    <string name="notification_status_channel_description">Ongoing progress while a print is running</string>
+    <string name="notification_events_channel">Print events</string>
+    <string name="notification_events_channel_description">A print finishing, failing, or being cancelled</string>
+</resources>

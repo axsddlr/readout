@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Widget surface: paper stock, ink, and the one signal plate. -->
+    <color name="widget_background">#FBF7EE</color>
+    <color name="widget_outline">#D6CBBA</color>
+    <color name="widget_ink">#1E1A16</color>
+    <color name="widget_muted">#4E463A</color>
+    <color name="widget_track">#D6CBBA</color>
+    <color name="widget_plate">#FFD43B</color>
+    <color name="widget_on_plate">#241C00</color>
+    <color name="widget_band_idle">#E9E1D2</color>
+    <color name="widget_band_error">#FFDAD6</color>
+    <color name="widget_error_ink">#410002</color>
+    <color name="widget_caption_scrim">#99000000</color>
+</resources>

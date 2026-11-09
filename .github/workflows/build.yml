@@ -1,0 +1,43 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The wrapper's distribution host occasionally returns 5xx; ride out short outages.
+      - name: Fetch the Gradle distribution
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if ./gradlew --version; then exit 0; fi
+            echo "Gradle distribution fetch failed (attempt $attempt); retrying in 20s"
+            sleep 20
+          done
+          exit 1
+
+      - name: Unit tests and debug builds
+        run: >
+          ./gradlew --no-daemon
+          :app:testDebugUnitTest :app:assembleDebug
+          :wear:testDebugUnitTest :wear:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readout-debug-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            wear/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
