@@ -114,4 +114,29 @@ object ReadoutIcons {
             }
         }.build()
     }
+
+    /** Three finder squares and a few modules: reads as "QR code" at 24 dp. */
+    val QrCode: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "QrCode", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black), pathFillType = androidx.compose.ui.graphics.PathFillType.EvenOdd) {
+                // Finder patterns: outer ring with a solid centre.
+                for ((x, y) in listOf(3f to 3f, 14f to 3f, 3f to 14f)) {
+                    moveTo(x, y); lineTo(x + 7f, y); lineTo(x + 7f, y + 7f); lineTo(x, y + 7f); close()
+                    moveTo(x + 1.75f, y + 1.75f); lineTo(x + 5.25f, y + 1.75f); lineTo(x + 5.25f, y + 5.25f); lineTo(x + 1.75f, y + 5.25f); close()
+                }
+            }
+            path(fill = SolidColor(Color.Black)) {
+                for ((x, y) in listOf(5f to 5f, 16f to 5f, 5f to 16f)) {
+                    moveTo(x, y); lineTo(x + 3f, y); lineTo(x + 3f, y + 3f); lineTo(x, y + 3f); close()
+                }
+                // Data modules.
+                for ((x, y) in listOf(14f to 14f, 17.5f to 14f, 14f to 17.5f, 17.5f to 17.5f, 19f to 19f, 15.75f to 15.75f)) {
+                    moveTo(x, y); lineTo(x + 2f, y); lineTo(x + 2f, y + 2f); lineTo(x, y + 2f); close()
+                }
+            }
+        }.build()
+    }
 }

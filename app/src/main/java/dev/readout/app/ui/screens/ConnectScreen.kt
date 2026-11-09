@@ -1,5 +1,9 @@
 package dev.readout.app.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,15 +37,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import dev.readout.app.data.AppKeyState
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.DiscoveredPrinter
+import dev.readout.app.ui.ReadoutIcons
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.theme.Spacing
+import dev.readout.app.util.QrPayload
+import dev.readout.app.util.isPermanentlyDenied
+import dev.readout.app.util.openAppSettings
 import kotlinx.coroutines.launch
 
 /**
@@ -65,6 +79,49 @@ fun ConnectScreen(
     var key by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
+
+    // QR scan fills the key, and the address too when the code carries one and the field is empty.
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val contents = result.contents ?: return@rememberLauncherForActivityResult
+        val payload = QrPayload.parse(contents)
+        if (payload == null) {
+            failure = "That QR code doesn't contain an OctoPrint API key."
+        } else {
+            key = payload.apiKey
+            if (address.isBlank() && payload.baseUrl != null) address = payload.baseUrl
+            failure = null
+        }
+    }
+    val scanOptions = remember {
+        ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt("Point the camera at the API key QR code in OctoPrint's settings")
+            .setBeepEnabled(false)
+            .setOrientationLocked(false)
+    }
+    // Ask for the camera ourselves, at the moment of use, so a denial is explained instead of
+    // silently closing the scanner. Permanently denied: the only way forward is system settings.
+    val context = LocalContext.current
+    val cameraPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        when {
+            granted -> scanner.launch(scanOptions)
+            context.isPermanentlyDenied(Manifest.permission.CAMERA) -> {
+                failure = "Camera access is off for Readout. Allow it in Settings to scan, or paste the key."
+                context.openAppSettings()
+            }
+            else -> failure = "Scanning needs the camera. You can paste the key instead."
+        }
+    }
+    val startScan = {
+        failure = null
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            scanner.launch(scanOptions)
+        } else {
+            cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -176,13 +233,19 @@ fun ConnectScreen(
             onValueChange = { key = it; failure = null },
             label = { Text("API key") },
             placeholder = { Text("A1B2C3…") },
+            trailingIcon = {
+                IconButton(onClick = startScan) {
+                    Icon(ReadoutIcons.QrCode, contentDescription = "Scan API key QR code")
+                }
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.small
         )
         Spacer(Modifier.height(Spacing.s))
         Text(
-            text = "OctoPrint → Settings → API Key. Stored in this app's private storage.",
+            text = "Paste the key from OctoPrint → Settings → API Key, or tap the QR icon to scan it. " +
+                "Stored in this app's private storage.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
