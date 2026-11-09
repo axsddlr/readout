@@ -140,9 +140,11 @@ object SnapshotParser {
             )
         }
         // Folders first, then newest first: the order a person scans a file list in.
+        // The `0L` matters: `?: 0` widens the selector to Comparable<*>, and comparing a Long
+        // entry against the Int literal throws Integer cannot be cast to Long.
         return out.sortedWith(
             compareByDescending<FileEntry> { it.isDirectory }
-                .thenByDescending { it.dateSeconds ?: 0 }
+                .thenByDescending { it.dateSeconds ?: 0L }
         )
     }
 }

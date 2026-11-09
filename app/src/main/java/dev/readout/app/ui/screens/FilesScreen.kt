@@ -139,7 +139,11 @@ fun FilesScreen(
         error = null
         runCatching { loadFiles() }
             .onSuccess { files = it; loading = false }
-            .onFailure { error = it.message ?: "Could not read the file list"; loading = false }
+            .onFailure {
+                android.util.Log.e("Readout", "file list failed", it)
+                error = it.message ?: "Could not read the file list"
+                loading = false
+            }
     }
 
     val filtered = remember(files, query) {
