@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -431,7 +432,11 @@ private fun FileSheet(
     onPrint: () -> Unit,
     onDelete: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Open fully expanded: the sheet exists to reach "Start print" in one tap, and the default
+    // half-expanded state hides it behind a drag.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl)) {
             Text(
                 text = file.name,

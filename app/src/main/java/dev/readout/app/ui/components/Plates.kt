@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -298,14 +299,24 @@ fun SpecRow(
             Icon(icon, contentDescription = null, tint = scheme.onSurfaceVariant)
             Spacer(Modifier.width(Spacing.l))
         }
-        Column(Modifier.weight(1f)) {
+        // The value is weighted, not intrinsic: a long path would otherwise take the whole row
+        // and squeeze the label down to one character per line.
+        Column(Modifier.weight(0.8f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge, color = content)
             if (secondary != null) {
                 Text(secondary, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
             }
         }
         Spacer(Modifier.width(Spacing.m))
-        Text(text = value, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1.2f)
+        )
     }
 }
 
