@@ -13,23 +13,29 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
@@ -39,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.readout.app.data.PrinterConfig
@@ -49,10 +56,15 @@ import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.components.SwipeToRemove
 import dev.readout.app.ui.theme.Spacing
-import dev.readout.app.util.openNotificationSettings
 import dev.readout.app.util.isPermanentlyDenied
+import dev.readout.app.util.openNotificationSettings
 import dev.readout.app.widget.WidgetPinning
 
+/**
+ * Settings is a list of decisions, not a form. Each section holds one kind of choice, rows carry
+ * their own state, and the printer's fields live in a sheet so the screen stays scannable.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     config: PrinterConfig?,
@@ -76,6 +88,7 @@ fun SettingsScreen(
     var name by remember(config?.name) { mutableStateOf(config?.name.orEmpty()) }
     var webcam by remember(config?.webcamUrl) { mutableStateOf(config?.webcamUrl.orEmpty()) }
     var confirmDisconnect by remember { mutableStateOf(false) }
+    var editingPrinter by remember { mutableStateOf(false) }
     var pinMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -105,6 +118,7 @@ fun SettingsScreen(
             Text("Settings", style = MaterialTheme.typography.titleLarge)
         }
 
+        // -- Appearance ---------------------------------------------------------------------
         SectionHeading("Appearance")
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             ThemePreference.entries.forEach { option ->
@@ -123,162 +137,126 @@ fun SettingsScreen(
                 )
             }
         }
-        Spacer(Modifier.height(Spacing.m))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Use wallpaper colours", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        "Use the system palette instead of the Readout colours."
-                    } else {
-                        "Requires Android 12 or newer."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        SettingRow(
+            title = "Use wallpaper colours",
+            supporting = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                "Take the palette from your wallpaper instead of Readout's own colours."
+            } else {
+                "Requires Android 12 or newer."
+            },
+            onClick = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ({ onDynamicColor(!dynamicColor) })
+            } else {
+                null
+            },
+            trailing = {
+                Switch(
+                    checked = dynamicColor,
+                    onCheckedChange = null,
+                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                 )
             }
-            Spacer(Modifier.width(Spacing.l))
-            Switch(
-                checked = dynamicColor,
-                onCheckedChange = onDynamicColor,
-                enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            )
-        }
+        )
 
+        // -- Printer -------------------------------------------------------------------------
         SectionHeading("Printer")
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small
-        )
-        Spacer(Modifier.height(Spacing.s))
-        Button(
-            onClick = { onNameChange(name.trim()) },
-            enabled = name.trim().isNotEmpty() && name.trim() != config?.name,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) { Text("Save name") }
-
-        Spacer(Modifier.height(Spacing.m))
-        OutlinedTextField(
-            value = webcam,
-            onValueChange = { webcam = it },
-            label = { Text("Camera snapshot URL") },
-            placeholder = { Text("http://octopi.local/webcam/?action=snapshot") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small
-        )
-        Spacer(Modifier.height(Spacing.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            Button(
-                onClick = { onWebcamChange(webcam.trim().ifBlank { null }) },
-                modifier = Modifier.weight(1f).height(48.dp)
-            ) { Text("Save URL") }
-            OutlinedButton(
-                onClick = { webcam = ""; onWebcamChange(null) },
-                modifier = Modifier.height(48.dp)
-            ) { Text("Reset") }
-        }
-        Spacer(Modifier.height(Spacing.xs))
-        Text(
-            "Leave blank to use /webcam/?action=snapshot on the printer address.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        SettingRow(
+            title = config?.name ?: "No printer connected",
+            supporting = config?.displayHost,
+            onClick = if (config == null) null else ({ editingPrinter = true }),
+            trailing = if (config == null) null else ({
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            })
         )
 
-        Spacer(Modifier.height(Spacing.l))
-        Plate(Modifier.fillMaxWidth()) {
-            Column {
-                instances.forEach { instance ->
-                    val active = instance.id == activeId
-                    key(instance.id) {
-                    SwipeToRemove(label = "Remove", onRemove = { onRemoveInstance(instance) }) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !active) { onSwitchInstance(instance.id) }
-                            .padding(vertical = Spacing.s),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = instance.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = instance.displayHost,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(
-                            text = if (active) "Active" else "Use",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (active) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
+        // The list only earns its space when there is something to switch between.
+        if (instances.size > 1) {
+            Spacer(Modifier.height(Spacing.s))
+            Plate(Modifier.fillMaxWidth()) {
+                Column {
+                    instances.forEach { instance ->
+                        val active = instance.id == activeId
+                        key(instance.id) {
+                            SwipeToRemove(label = "Remove", onRemove = { onRemoveInstance(instance) }) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable(enabled = !active) { onSwitchInstance(instance.id) }
+                                        .heightIn(min = 56.dp)
+                                        .padding(vertical = Spacing.s),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            text = instance.name,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = instance.displayHost,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(
+                                        text = if (active) "Active" else "Use",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (active) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                }
                             }
-                        )
+                        }
+                        RowDivider()
                     }
-                    }
-                    }
-                    RowDivider()
-                }
-                SpecRow(null, "Address", config?.displayHost ?: "—")
-                SpecRow(null, "Over transport", if (config?.baseUrl?.startsWith("https") == true) "HTTPS" else "HTTP")
-                SpecRow(null, "Key", if (config == null) "—" else "•••• " + (config.apiKey.takeLast(4)))
-                Spacer(Modifier.height(Spacing.s))
-                TextButton(
-                    onClick = onAddAnother,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
-                ) {
-                    Text("Add another printer")
-                }
-                TextButton(
-                    onClick = { confirmDisconnect = true },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
-                ) {
-                    Text("Forget this printer", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
 
-        SectionHeading("Notifications")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Live print notification", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = "An ongoing notification with progress and a pause action while a job runs, " +
-                        "plus one alert when it finishes or stops. Also keeps home-screen widgets current.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        SettingRow(
+            title = "Add another printer",
+            trailing = { Icon(Icons.Filled.Add, contentDescription = null) },
+            onClick = onAddAnother
+        )
+        if (config != null) {
+            Spacer(Modifier.height(Spacing.xs))
+            RowDivider()
+            Spacer(Modifier.height(Spacing.xs))
+            TextButton(
+                onClick = { confirmDisconnect = true },
+                modifier = Modifier.heightIn(min = 48.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+            ) {
+                Text("Forget this printer", color = MaterialTheme.colorScheme.error)
             }
-            Switch(
-                checked = notificationsEnabled,
-                onCheckedChange = { enabled ->
-                    if (!enabled) {
-                        onNotificationsChange(false)
-                    } else if (
-                        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        }
+
+        // -- Notifications -------------------------------------------------------------------
+        SectionHeading("Notifications")
+        SettingRow(
+            title = "Live print notification",
+            supporting = "Progress and a pause action while printing, plus one alert when it ends.",
+            onClick = {
+                val target = !notificationsEnabled
+                when {
+                    !target -> onNotificationsChange(false)
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                         ContextCompat.checkSelfPermission(
                             context,
                             Manifest.permission.POST_NOTIFICATIONS
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        onNotificationsChange(true)
-                    } else {
-                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
+                        ) == PackageManager.PERMISSION_GRANTED -> onNotificationsChange(true)
+                    else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
-            )
-        }
+            },
+            trailing = {
+                Switch(checked = notificationsEnabled, onCheckedChange = null)
+            }
+        )
 
+        // -- Home screen ---------------------------------------------------------------------
         SectionHeading("Home screen")
         Text(
             text = "Pin a widget without leaving the app. Widgets keep themselves current and show " +
@@ -315,6 +293,7 @@ fun SettingsScreen(
             )
         }
 
+        // -- About ---------------------------------------------------------------------------
         SectionHeading("About")
         Text(
             text = "Readout 1.0",
@@ -337,6 +316,22 @@ fun SettingsScreen(
         Spacer(Modifier.height(Spacing.xxl))
     }
 
+    if (editingPrinter && config != null) {
+        PrinterDetailsSheet(
+            config = config,
+            name = name,
+            webcam = webcam,
+            onName = { name = it },
+            onWebcam = { webcam = it },
+            onSave = {
+                onNameChange(name.trim())
+                onWebcamChange(webcam.trim().ifBlank { null })
+                editingPrinter = false
+            },
+            onDismiss = { editingPrinter = false }
+        )
+    }
+
     if (confirmDisconnect) {
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
@@ -352,6 +347,120 @@ fun SettingsScreen(
                 TextButton(onClick = { confirmDisconnect = false }) { Text("Keep") }
             }
         )
+    }
+}
+
+/**
+ * Name, camera and connection in one place: the things that describe *this* printer, separate from
+ * the settings that describe the app.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrinterDetailsSheet(
+    config: PrinterConfig,
+    name: String,
+    webcam: String,
+    onName: (String) -> Unit,
+    onWebcam: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier
+                .padding(horizontal = Spacing.l)
+                .padding(bottom = Spacing.xxl)
+        ) {
+            Text("Printer details", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(Spacing.l))
+            OutlinedTextField(
+                value = name,
+                onValueChange = onName,
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small
+            )
+            Spacer(Modifier.height(Spacing.s))
+            OutlinedTextField(
+                value = webcam,
+                onValueChange = onWebcam,
+                label = { Text("Camera snapshot URL") },
+                placeholder = { Text("http://octopi.local/webcam/?action=snapshot") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "Leave blank to use /webcam/?action=snapshot on the printer address.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(Spacing.l))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Spacer(Modifier.weight(1f))
+                Button(
+                    onClick = onSave,
+                    enabled = name.trim().isNotEmpty(),
+                    modifier = Modifier.height(48.dp)
+                ) { Text("Save changes") }
+            }
+            Spacer(Modifier.height(Spacing.l))
+            RowDivider()
+            SpecRow(null, "Address", config.displayHost)
+            SpecRow(
+                null,
+                "Over transport",
+                if (config.baseUrl.startsWith("https")) "HTTPS" else "HTTP"
+            )
+            SpecRow(null, "Key", "•••• " + config.apiKey.takeLast(4))
+        }
+    }
+}
+
+/**
+ * One row, one decision: a title, an optional explanation, and whatever control changes it. Fixed
+ * height and rhythm keep a settings list readable when the rows differ in kind.
+ */
+@Composable
+private fun SettingRow(
+    title: String,
+    supporting: String? = null,
+    onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .heightIn(min = 56.dp)
+            .padding(vertical = Spacing.s),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (supporting != null) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (trailing != null) {
+            Spacer(Modifier.width(Spacing.m))
+            trailing()
+        }
     }
 }
 
