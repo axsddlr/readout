@@ -204,8 +204,13 @@ fun NowScreen(
             )
             Spacer(Modifier.width(Spacing.s))
             Text(
-                text = if (state.lastUpdateMs == null) "No reading yet" else
-                    "${snapshot?.octoPrintVersion ?: "OctoPrint"} · updated ${Format.age(state.lastUpdateMs)}",
+                text = when {
+                    state.phase == ConnectionPhase.Live ->
+                        "${snapshot?.octoPrintVersion ?: "OctoPrint"} · updated ${Format.age(state.lastUpdateMs)}"
+                    state.lastUpdateMs == null -> "Trying to reach the printer…"
+                    // Saying it is retrying matters: otherwise a stale screen looks like a dead end.
+                    else -> "Reconnecting… last update ${Format.age(state.lastUpdateMs)}"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -1,6 +1,9 @@
 package dev.readout.app.data
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,6 +45,9 @@ class PrinterController(context: Context) {
 
     private var api: OctoPrintApi? = initialConfig?.let { OctoPrintApi(it.baseUrl, it.apiKey) }
     private var pollJob: Job? = null
+    private var foreground = false
+    private val connectivity: ConnectivityManager? =
+        context.applicationContext.getSystemService(ConnectivityManager::class.java)
     private var versionLabel: String? = null
     private var powerProbed = false
     private var psuSupported = false
@@ -152,21 +158,34 @@ class PrinterController(context: Context) {
     }
 
     fun start() {
+        foreground = true
         if (pollJob?.isActive == true) return
         pollJob = scope.launch {
+            var failures = 0
             while (isActive) {
                 val configured = _state.value.config != null
                 if (!configured) {
                     delay(1_000)
                     continue
                 }
-                refresh()
-                delay(if (_state.value.phase == ConnectionPhase.Live) 2_000 else 5_000)
+                try {
+                    refresh()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (unexpected: Throwable) {
+                    // The loop has to outlive anything refresh throws. If it died, the app would
+                    // stop polling silently and only look fixed after a manual reconnect.
+                    android.util.Log.w("Readout", "poll failed", unexpected)
+                }
+                val live = _state.value.phase == ConnectionPhase.Live
+                failures = if (live) 0 else failures + 1
+                delay(if (live) LIVE_POLL_MS else retryDelayMs(failures))
             }
         }
     }
 
     fun stop() {
+        foreground = false
         pollJob?.cancel()
         pollJob = null
         discovery.stop()
@@ -174,8 +193,25 @@ class PrinterController(context: Context) {
     }
 
     fun shutdown() {
+        runCatching { connectivity?.unregisterNetworkCallback(networkCallback) }
         stop()
         scope.cancel()
+    }
+
+    /**
+     * A new network is the one moment worth trying immediately instead of waiting for the backoff:
+     * the phone returning to Wi-Fi is the common case after a drop.
+     */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            if (!foreground) return
+            if (pollJob?.isActive != true) start()
+            scope.launch { refresh() }
+        }
+    }
+
+    init {
+        runCatching { connectivity?.registerDefaultNetworkCallback(networkCallback) }
     }
 
     fun refreshNow() {
@@ -636,3 +672,15 @@ class PrinterController(context: Context) {
 }
 
 private const val APP_KEY_TIMEOUT_MS = 180_000L
+private const val LIVE_POLL_MS = 2_000L
+
+/**
+ * Backoff for a printer that is not answering. Capped at 15 s so a printer that comes back is
+ * noticed by itself, which is the whole point: nobody should have to press Connect.
+ */
+internal fun retryDelayMs(failures: Int): Long = when {
+    failures <= 1 -> 2_000L
+    failures == 2 -> 4_000L
+    failures == 3 -> 8_000L
+    else -> 15_000L
+}

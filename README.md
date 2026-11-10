@@ -56,7 +56,8 @@ PORT=8009 node tools/mock-octoprint.js  # a second printer for the fleet view
 
 Single-activity Compose app, no third-party HTTP, JSON, DI, navigation or image libraries. One
 controller owns the printer connection and the UI state; screens are stateless views over it. Widgets
-and the notification service read the same cached snapshot.
+and the notification service read the same cached snapshot. Polling retries with a capped backoff and
+fires immediately when a network returns, so an interrupted link heals without a Connect button.
 
 ```
 app/     phone app (dev.readout.app)
