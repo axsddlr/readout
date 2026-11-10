@@ -33,6 +33,19 @@ object Format {
 
     fun celsius(value: Float): String = "${value.toInt()}°"
 
+    fun millimetres(value: Float, decimals: Int = 1): String =
+        String.format(Locale.US, "%.${decimals}f mm", value)
+
+    /** Metres once a spool's worth of filament is involved; millimetres while it is still a layer. */
+    fun filament(mm: Float): String =
+        if (mm >= 1000f) String.format(Locale.US, "%.2f m", mm / 1000f) else millimetres(mm)
+
+    /** Width × depth × height, the order a slicer shows a model's footprint in. */
+    fun modelSize(width: Float, depth: Float, height: Float): String =
+        String.format(Locale.US, "%.1f × %.1f × %.1f mm", width, depth, height)
+
+    fun count(value: Int): String = String.format(Locale.getDefault(), "%,d", value)
+
     fun targetAndActual(actual: Float, target: Float): String =
         if (target <= 0f) "${actual.toInt()}°" else "${actual.toInt()}° / ${target.toInt()}°"
 

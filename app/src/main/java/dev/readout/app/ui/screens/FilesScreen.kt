@@ -487,20 +487,74 @@ private fun FileSheet(
                 onLayer = { layerIndex = it }
             )
             Spacer(Modifier.height(Spacing.l))
-            SpecRow(null, "Size", Format.bytes(file.sizeBytes))
-            SpecRow(null, "Added", Format.fileDate(file.dateSeconds).ifBlank { "—" })
-            SpecRow(null, "Location", file.origin)
-            SpecRow(null, "Path", file.path)
-            Spacer(Modifier.height(Spacing.l))
+            // The reason this sheet exists comes before the measurements, so a long list of
+            // statistics can never push "Start print" off the first screen.
             Button(
                 onClick = onPrint,
                 modifier = Modifier.fillMaxWidth().height(52.dp)
             ) { Text("Start print") }
-            Spacer(Modifier.height(Spacing.s))
+            preview?.takeIf { !it.isEmpty }?.let { loaded ->
+                ModelInfo(loaded)
+                LayerInfo(loaded, layerIndex)
+            }
+            SectionHeading("File")
+            SpecRow(null, "File size", Format.bytes(file.sizeBytes))
+            SpecRow(null, "Added", Format.fileDate(file.dateSeconds).ifBlank { "—" })
+            SpecRow(null, "Location", file.origin)
+            SpecRow(null, "Path", file.path)
+            Spacer(Modifier.height(Spacing.xl))
             TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete file", color = MaterialTheme.colorScheme.error)
             }
         }
+    }
+}
+
+/**
+ * What the file will occupy: the numbers a slicer would show before you send it, read from the
+ * same pass that drew the toolpaths. A slicer's own duration wins over the move estimate.
+ */
+@Composable
+private fun ModelInfo(preview: GcodePreview) {
+    SectionHeading("Model")
+    SpecRow(
+        null,
+        "Model size",
+        Format.modelSize(preview.modelWidth, preview.modelDepth, preview.modelHeight)
+    )
+    if (preview.layerHeight > 0f) {
+        SpecRow(null, "Layer height", Format.millimetres(preview.layerHeight, 2))
+    }
+    SpecRow(
+        null,
+        "Layers",
+        if (preview.truncated) "${preview.layers.size}+" else Format.count(preview.layers.size)
+    )
+    if (preview.filamentMm > 0f) {
+        SpecRow(null, "Filament", Format.filament(preview.filamentMm))
+    }
+    preview.printSeconds?.let { seconds ->
+        SpecRow(
+            null,
+            "Print time",
+            if (preview.printTimeIsEstimate) "≈ ${Format.duration(seconds)}" else Format.duration(seconds),
+            secondary = if (preview.printTimeIsEstimate) "From move speeds" else null
+        )
+    }
+}
+
+/** The layer under the preview slider: how far in it is, how busy, and how long it takes. */
+@Composable
+private fun LayerInfo(preview: GcodePreview, index: Int) {
+    val layer = preview.layers.getOrNull(index) ?: return
+    SectionHeading("Layer ${index + 1} of ${preview.layers.size}")
+    SpecRow(null, "At height", Format.millimetres(layer.z, 2))
+    SpecRow(null, "Commands", Format.count(layer.commands))
+    if (layer.filamentMm > 0f) {
+        SpecRow(null, "Filament", Format.millimetres(layer.filamentMm, 2))
+    }
+    if (layer.seconds > 0f) {
+        SpecRow(null, "Layer time", Format.duration(layer.seconds.toLong()))
     }
 }
 
@@ -568,11 +622,11 @@ private fun ToolpathPreview(
                 if (layer != null) {
                     val pad = 12f
                     val scale = min(
-                        (size.width - pad * 2) / preview.width,
-                        (size.height - pad * 2) / preview.height
+                        (size.width - pad * 2) / preview.xyWidth,
+                        (size.height - pad * 2) / preview.xyHeight
                     )
-                    val ox = (size.width - preview.width * scale) / 2f - preview.minX * scale
-                    val oy = (size.height + preview.height * scale) / 2f + preview.minY * scale
+                    val ox = (size.width - preview.xyWidth * scale) / 2f - preview.minX * scale
+                    val oy = (size.height + preview.xyHeight * scale) / 2f + preview.minY * scale
                     withTransform({
                         translate(ox, oy)
                         scale(scale, -scale, pivot = Offset.Zero)
