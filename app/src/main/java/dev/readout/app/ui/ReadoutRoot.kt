@@ -347,7 +347,8 @@ private fun MainShell(vm: ReadoutViewModel) {
                                 vm.controller.deleteFile(file)
                                 notify("Deleted ${file.name}")
                             },
-                            onOpenTimelapses = { showTimelapses = true }
+                            onOpenTimelapses = { showTimelapses = true },
+                            loadPreview = { file -> vm.controller.loadPreview(file) }
                         )
 
                         else -> MachineScreen(

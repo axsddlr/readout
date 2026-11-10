@@ -9,8 +9,8 @@ no account, no cloud, no analytics.
 
 - **Now** — state, job, progress, elapsed/remaining with ETA provenance, camera still, temperatures,
   pause/resume/cancel.
-- **Files** — filter, inspect, start, upload and batch-delete G-code; timelapse archive with in-place
-  playback.
+- **Files** — filter, inspect, start, upload and batch-delete G-code; a layer-by-layer toolpath
+  preview drawn from the file itself; timelapse archive with in-place playback.
 - **Machine** — set temperature targets, jog in 1/10/50 mm steps, home, extrude, send G-code,
   connect/disconnect, and switch power outputs.
 - **Power** — PSU Control, OctoRelay and WLED appear as switches when their plugins answer.

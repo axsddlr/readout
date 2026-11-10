@@ -3,7 +3,9 @@ package dev.readout.app.ui.screens
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -31,12 +35,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,12 +50,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.FileEntry
+import dev.readout.app.data.GcodePreview
 import dev.readout.app.ui.ReadoutIcons
 import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
@@ -59,6 +72,8 @@ import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
 import kotlinx.coroutines.launch
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * The file library. A printed index, not a storefront: name, weight, date, and the actions that
@@ -76,6 +91,7 @@ fun FilesScreen(
     onStartPrint: (FileEntry) -> Unit,
     onDelete: (FileEntry) -> Unit,
     onOpenTimelapses: () -> Unit,
+    loadPreview: suspend (FileEntry) -> GcodePreview,
     modifier: Modifier = Modifier
 ) {
     var files by remember { mutableStateOf<List<FileEntry>>(emptyList()) }
@@ -341,6 +357,7 @@ fun FilesScreen(
     selected?.let { file ->
         FileSheet(
             file = file,
+            loadPreview = loadPreview,
             onDismiss = { selected = null },
             onPrint = {
                 selected = null
@@ -428,6 +445,7 @@ private data class UploadProgress(val name: String, val progress: Float)
 @Composable
 private fun FileSheet(
     file: FileEntry,
+    loadPreview: suspend (FileEntry) -> GcodePreview,
     onDismiss: () -> Unit,
     onPrint: () -> Unit,
     onDelete: () -> Unit
@@ -435,17 +453,40 @@ private fun FileSheet(
     // Open fully expanded: the sheet exists to reach "Start print" in one tap, and the default
     // half-expanded state hides it behind a drag.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var preview by remember(file) { mutableStateOf<GcodePreview?>(null) }
+    var previewError by remember(file) { mutableStateOf<String?>(null) }
+    var layerIndex by remember(file) { mutableIntStateOf(0) }
+
+    LaunchedEffect(file) {
+        runCatching { loadPreview(file) }
+            .onSuccess {
+                preview = it
+                layerIndex = (it.layers.size - 1).coerceAtLeast(0)
+            }
+            .onFailure { previewError = it.message ?: "Could not read the toolpaths" }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(Modifier.padding(horizontal = Spacing.xl).padding(bottom = Spacing.xxl)) {
+        Column(
+            Modifier
+                .padding(horizontal = Spacing.xl)
+                .padding(bottom = Spacing.xxl)
+                .verticalScroll(rememberScrollState())
+        ) {
             Text(
                 text = file.name,
                 style = MaterialTheme.typography.headlineSmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(Spacing.m))
-            Spacer(Modifier.height(Spacing.s))
+            Spacer(Modifier.height(Spacing.l))
+            ToolpathPreview(
+                preview = preview,
+                error = previewError,
+                layerIndex = layerIndex,
+                onLayer = { layerIndex = it }
+            )
+            Spacer(Modifier.height(Spacing.l))
             SpecRow(null, "Size", Format.bytes(file.sizeBytes))
             SpecRow(null, "Added", Format.fileDate(file.dateSeconds).ifBlank { "—" })
             SpecRow(null, "Location", file.origin)
@@ -458,6 +499,125 @@ private fun FileSheet(
             Spacer(Modifier.height(Spacing.s))
             TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete file", color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+/**
+ * A top-down drawing of the toolpaths, one layer at a time. It exists so you can recognise a file
+ * before printing it; it is not a 3D preview and makes no claim to be.
+ */
+@Composable
+private fun ToolpathPreview(
+    preview: GcodePreview?,
+    error: String?,
+    layerIndex: Int,
+    onLayer: (Int) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    when {
+        error != null -> Text(
+            text = "No preview: $error",
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.error
+        )
+
+        preview == null -> Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(Spacing.m))
+            Text(
+                text = "Reading toolpaths…",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant
+            )
+        }
+
+        preview.isEmpty -> Text(
+            text = "This file has no toolpaths to draw.",
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant
+        )
+
+        else -> {
+            // Paths are built once in model coordinates; the canvas only scales and flips them,
+            // so dragging the layer slider never re-walks thousands of segments.
+            val layerPaths = remember(preview) {
+                preview.layers.map { layer ->
+                    Path().apply {
+                        layer.lines.forEach { line ->
+                            if (line.extruding) {
+                                moveTo(line.x1, line.y1)
+                                lineTo(line.x2, line.y2)
+                            }
+                        }
+                    }
+                }
+            }
+            val wholePart = remember(layerPaths) {
+                Path().apply { layerPaths.forEach { addPath(it) } }
+            }
+            val layer = layerPaths.getOrNull(layerIndex)
+            Canvas(
+                Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(scheme.surfaceContainerHighest)
+            ) {
+                if (layer != null) {
+                    val pad = 12f
+                    val scale = min(
+                        (size.width - pad * 2) / preview.width,
+                        (size.height - pad * 2) / preview.height
+                    )
+                    val ox = (size.width - preview.width * scale) / 2f - preview.minX * scale
+                    val oy = (size.height + preview.height * scale) / 2f + preview.minY * scale
+                    withTransform({
+                        translate(ox, oy)
+                        scale(scale, -scale, pivot = Offset.Zero)
+                    }) {
+                        // The rest of the part in a whisper of colour, so a single layer reads as
+                        // part of something rather than a stray shape floating in a box.
+                        drawPath(
+                            wholePart,
+                            scheme.primary.copy(alpha = 0.16f),
+                            style = Stroke(width = 1.2f / scale)
+                        )
+                        drawPath(
+                            layer,
+                            scheme.primary,
+                            style = Stroke(width = 1.8f / scale, cap = StrokeCap.Round)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(Spacing.s))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (preview.layers.size > 1) {
+                        "Layer ${layerIndex + 1} of ${preview.layers.size}"
+                    } else {
+                        "Layer 1"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+                if (preview.truncated) {
+                    Text(
+                        text = "preview limited to the start of the file",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (preview.layers.size > 1) {
+                Slider(
+                    value = layerIndex.toFloat(),
+                    onValueChange = { onLayer(it.roundToInt().coerceIn(0, preview.layers.size - 1)) },
+                    valueRange = 0f..(preview.layers.size - 1).toFloat()
+                )
             }
         }
     }

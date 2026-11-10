@@ -480,6 +480,24 @@ class PrinterController(context: Context) {
         SnapshotParser.parseFiles(client.files())
     }
 
+    private val previewCache = mutableMapOf<String, GcodePreview>()
+
+    /**
+     * Streams a G-code file and returns its toolpaths. Parsed on IO and kept for the session, so
+     * tapping the same file twice costs nothing; the cache is small and bounded.
+     */
+    suspend fun loadPreview(file: FileEntry): GcodePreview = withContext(Dispatchers.IO) {
+        val key = file.origin + "/" + file.path
+        previewCache[key]?.let { return@withContext it }
+        val client = api ?: throw OctoPrintException("No printer configured")
+        val preview = client.openFile(file.origin, file.path).bufferedReader().use { reader ->
+            GcodePreviewParser.parse(reader)
+        }
+        if (previewCache.size >= 4) previewCache.clear()
+        previewCache[key] = preview
+        preview
+    }
+
     suspend fun loadTimelapses(): List<TimelapseEntry> = withContext(Dispatchers.IO) {
         val client = api ?: throw OctoPrintException("No printer configured")
         client.timelapses()

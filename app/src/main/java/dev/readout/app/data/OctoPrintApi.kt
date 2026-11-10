@@ -288,6 +288,39 @@ class OctoPrintApi(
     private fun escape(value: String): String =
         value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "").replace("\n", "")
 
+    /**
+     * Opens a stored file for streaming. The caller owns the stream; closing it disconnects.
+     * G-code files can be tens of megabytes, so this never buffers the whole file.
+     */
+    fun openFile(origin: String, path: String): InputStream {
+        val connection =
+            (URL("$root/downloads/files/${encode(origin)}/${encodePath(path)}").openConnection()
+                as HttpURLConnection).apply {
+                connectTimeout = 8_000
+                readTimeout = 20_000
+                requestMethod = "GET"
+                setRequestProperty("X-Api-Key", apiKey)
+            }
+        val code = connection.responseCode
+        if (code == 401 || code == 403) {
+            connection.disconnect()
+            throw OctoPrintException("API key rejected. Check the key in Settings.")
+        }
+        if (code !in 200..299) {
+            connection.disconnect()
+            throw OctoPrintException("Could not read the file ($code)")
+        }
+        return object : java.io.FilterInputStream(connection.inputStream) {
+            override fun close() {
+                try {
+                    super.close()
+                } finally {
+                    connection.disconnect()
+                }
+            }
+        }
+    }
+
     fun fetchBytes(absoluteUrl: String): ByteArray {
         val connection = (URL(absoluteUrl).openConnection() as HttpURLConnection).apply {
             connectTimeout = 6_000
