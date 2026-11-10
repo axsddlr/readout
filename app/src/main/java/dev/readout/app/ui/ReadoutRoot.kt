@@ -33,10 +33,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -66,11 +66,20 @@ import dev.readout.app.ui.theme.ReadoutTheme
 import dev.readout.app.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 
-private enum class Destination(val label: String, val icon: ImageVector) {
-    Now("Now", ReadoutIcons.Printer),
-    Files("Files", Icons.AutoMirrored.Filled.List),
-    Machine("Machine", ReadoutIcons.Terminal)
+private enum class Destination(val route: Route, val label: String, val icon: ImageVector) {
+    Now(Route.Now, "Now", ReadoutIcons.Printer),
+    Files(Route.Files, "Files", Icons.AutoMirrored.Filled.List),
+    Machine(Route.Machine, "Machine", ReadoutIcons.Terminal)
 }
+
+/** Survives process death and rotation: only the route names go into the bundle. */
+private val RouteStackSaver = listSaver<List<Route>, String>(
+    save = { stack -> stack.map { it.name } },
+    restore = { names ->
+        names.mapNotNull { name -> Route.entries.firstOrNull { it.name == name } }
+            .ifEmpty { Nav.start }
+    }
+)
 
 @Composable
 fun ReadoutRoot(vm: ReadoutViewModel = viewModel()) {
@@ -140,12 +149,9 @@ private fun MainShell(vm: ReadoutViewModel) {
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var tabIndex by rememberSaveable { mutableIntStateOf(0) }
-    var showSettings by rememberSaveable { mutableStateOf(false) }
-    var showTimelapses by rememberSaveable { mutableStateOf(false) }
-    var showFleet by rememberSaveable { mutableStateOf(false) }
+    var stack by rememberSaveable(stateSaver = RouteStackSaver) { mutableStateOf(Nav.start) }
     var showSwitcher by remember { mutableStateOf(false) }
-    val destination = Destination.entries[tabIndex.coerceIn(0, Destination.entries.lastIndex)]
+    val route = stack.last()
 
     LaunchedEffect(state.notice) {
         state.notice?.let { message ->
@@ -193,11 +199,19 @@ private fun MainShell(vm: ReadoutViewModel) {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val expanded = maxWidth >= 600.dp
+        val surface = Nav.surface(maxWidth.value.toInt(), maxHeight.value.toInt())
+        // The suite and masthead are top-level chrome. Detail screens bring their own header
+        // and back arrow, so both step aside instead of stacking a second bar on top.
+        val onTopLevel = route.isTopLevel
+        // A reading measure: past an expanded window the content stops growing instead of
+        // stretching a card or a line of help across the glass. Centred in the pane the rail
+        // leaves, and it never shrinks a phone layout.
+        val pane = maxWidth - if (onTopLevel && surface == NavSurface.Rail) 80.dp else 0.dp
+        val gutter = ((pane - 840.dp) / 2).coerceAtLeast(0.dp)
 
         Scaffold(
             topBar = {
-                Column(Modifier.statusBarsPadding()) {
+                if (onTopLevel) Column(Modifier.statusBarsPadding()) {
                     Masthead(
                         printerName = state.config?.name ?: "Printer",
                         connectionLabel = when (state.phase) {
@@ -213,22 +227,19 @@ private fun MainShell(vm: ReadoutViewModel) {
                             IconAction(
                                 icon = Icons.Filled.Settings,
                                 label = "Settings",
-                                onClick = { showSettings = true }
+                                onClick = { stack = Nav.push(stack, Route.Settings) }
                             )
                         }
                     )
                 }
             },
             bottomBar = {
-                if (!expanded) {
+                if (onTopLevel && surface == NavSurface.BottomBar) {
                     NavigationBar {
-                        Destination.entries.forEachIndexed { index, item ->
+                        Destination.entries.forEach { item ->
                             NavigationBarItem(
-                                selected = tabIndex == index && !showSettings,
-                                onClick = {
-                                    showSettings = false
-                                    tabIndex = index
-                                },
+                                selected = route == item.route,
+                                onClick = { stack = Nav.select(stack, item.route) },
                                 icon = {
                                     androidx.compose.material3.Icon(
                                         imageVector = item.icon,
@@ -253,15 +264,12 @@ private fun MainShell(vm: ReadoutViewModel) {
                     .consumeWindowInsets(innerPadding)
                     .imePadding()
             ) {
-                if (expanded) {
+                if (onTopLevel && surface == NavSurface.Rail) {
                     NavigationRail {
-                        Destination.entries.forEachIndexed { index, item ->
+                        Destination.entries.forEach { item ->
                             NavigationRailItem(
-                                selected = tabIndex == index && !showSettings,
-                                onClick = {
-                                    showSettings = false
-                                    tabIndex = index
-                                },
+                                selected = route == item.route,
+                                onClick = { stack = Nav.select(stack, item.route) },
                                 icon = {
                                     androidx.compose.material3.Icon(
                                         imageVector = item.icon,
@@ -274,12 +282,12 @@ private fun MainShell(vm: ReadoutViewModel) {
                     }
                 }
 
-                Box(Modifier.weight(1f)) {
-                    BackHandler(enabled = showSettings) { showSettings = false }
-                    BackHandler(enabled = showTimelapses) { showTimelapses = false }
-                    BackHandler(enabled = showFleet) { showFleet = false }
-                    when {
-                        showSettings -> SettingsScreen(
+                Box(Modifier.weight(1f).padding(horizontal = gutter)) {
+                    // One handler for the whole stack. Disabled at the root so Back leaves the
+                    // app rather than being swallowed.
+                    BackHandler(enabled = stack.size > 1) { stack = Nav.back(stack) ?: stack }
+                    when (route) {
+                        Route.Settings -> SettingsScreen(
                             config = state.config,
                             theme = themePreference,
                             dynamicColor = dynamicColor,
@@ -292,7 +300,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onNameChange = { vm.controller.savePrinterName(it) },
                             onWebcamChange = { vm.controller.saveWebcam(it) },
                             onDisconnect = {
-                                showSettings = false
+                                stack = Nav.select(stack, Route.Now)
                                 vm.controller.forgetActive()
                             },
                             instances = state.instances,
@@ -300,42 +308,43 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onSwitchInstance = { id -> vm.controller.switchTo(id) },
                             onRemoveInstance = removePrinter,
                             onAddAnother = {
-                                showSettings = false
+                                stack = Nav.select(stack, Route.Now)
                                 vm.controller.addAnother()
                             },
-                            onBack = { showSettings = false }
+                            onBack = { stack = Nav.back(stack) ?: stack }
                         )
 
-                        showTimelapses -> TimelapseScreen(                            live = state.phase == ConnectionPhase.Live,
+                        Route.Timelapses -> TimelapseScreen(
+                            live = state.phase == ConnectionPhase.Live,
                             load = { vm.controller.loadTimelapses() },
                             streamUrl = { entry -> vm.controller.timelapseUrl(entry) },
                             apiKey = state.config?.apiKey.orEmpty(),
                             delete = { entry -> vm.controller.deleteTimelapse(entry) },
-                            onBack = { showTimelapses = false }
+                            onBack = { stack = Nav.back(stack) ?: stack }
                         )
 
-                        showFleet -> FleetScreen(
+                        Route.Fleet -> FleetScreen(
                             fleet = state.fleet,
                             onRefresh = { vm.controller.refreshFleet() },
                             onAction = { action, ids -> vm.controller.fleetCommand(action, ids) },
                             loadFiles = { ids -> vm.controller.fleetFiles(ids) },
                             onStartFile = { ids, name -> vm.controller.fleetStart(ids, name) },
-                            onBack = { showFleet = false }
+                            onBack = { stack = Nav.back(stack) ?: stack }
                         )
 
-                        destination == Destination.Now -> NowScreen(
+                        Route.Now -> NowScreen(
                             state = state,
                             onPause = { vm.controller.pause() },
                             onResume = { vm.controller.resume() },
                             onCancel = { vm.controller.cancelPrint() },
-                            onOpenFiles = { tabIndex = 1 },
-                            onOpenMachine = { tabIndex = 2 },
-                            onOpenSettings = { showSettings = true },
+                            onOpenFiles = { stack = Nav.select(stack, Route.Files) },
+                            onOpenMachine = { stack = Nav.select(stack, Route.Machine) },
+                            onOpenSettings = { stack = Nav.push(stack, Route.Settings) },
                             onSetTarget = { component, value -> vm.controller.setTarget(component, value) },
                             fetchFrame = { vm.controller.fetchCameraFrame() }
                         )
 
-                        destination == Destination.Files -> FilesScreen(
+                        Route.Files -> FilesScreen(
                             live = state.phase == ConnectionPhase.Live,
                             loadFiles = { vm.controller.loadFiles() },
                             deleteFiles = { files -> vm.controller.deleteFiles(files) },
@@ -350,11 +359,11 @@ private fun MainShell(vm: ReadoutViewModel) {
                                 vm.controller.deleteFile(file)
                                 notify("Deleted ${file.name}")
                             },
-                            onOpenTimelapses = { showTimelapses = true },
+                            onOpenTimelapses = { stack = Nav.push(stack, Route.Timelapses) },
                             loadPreview = { file -> vm.controller.loadPreview(file) }
                         )
 
-                        else -> MachineScreen(
+                        Route.Machine -> MachineScreen(
                             snapshot = state.snapshot,
                             busy = state.busy,
                             powerSwitches = state.powerSwitches,
@@ -366,7 +375,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onGcode = { line -> vm.controller.sendGcode(line) },
                             onConnectPrinter = { vm.controller.connectPrinter() },
                             onDisconnectPrinter = { vm.controller.disconnectPrinter() },
-                            onOpenSettings = { showSettings = true },
+                            onOpenSettings = { stack = Nav.push(stack, Route.Settings) },
                             allowMoveWhilePrinting = moveDuringPrint
                         )
                     }
@@ -385,7 +394,6 @@ private fun MainShell(vm: ReadoutViewModel) {
                 TextButton(onClick = {
                     confirmRemoveLast = null
                     showSwitcher = false
-                    showSettings = false
                     vm.controller.forget(config.id)
                 }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
@@ -409,7 +417,7 @@ private fun MainShell(vm: ReadoutViewModel) {
             },
             onOpenFleet = {
                 showSwitcher = false
-                showFleet = true
+                stack = Nav.push(stack, Route.Fleet)
             },
             onDismiss = { showSwitcher = false }
         )
@@ -417,7 +425,8 @@ private fun MainShell(vm: ReadoutViewModel) {
 }
 
 @Composable
-private fun IconAction(    icon: ImageVector,
+private fun IconAction(
+    icon: ImageVector,
     label: String,
     onClick: () -> Unit
 ) {

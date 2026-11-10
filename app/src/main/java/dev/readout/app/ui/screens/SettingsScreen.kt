@@ -240,8 +240,8 @@ fun SettingsScreen(
         SectionHeading("Machine")
         SettingRow(
             title = "Allow movement while printing",
-            supporting = "Jogging an axis mid-print can shift a layer or drive the head into the " +
-                "part. Off by default; turn it on only when nudging is the lesser evil.",
+            supporting = "Off by default. Jogging mid-print can shift a layer or crash the head " +
+                "into the part.",
             onClick = { onMoveDuringPrint(!moveDuringPrint) },
             trailing = { Switch(checked = moveDuringPrint, onCheckedChange = null) }
         )

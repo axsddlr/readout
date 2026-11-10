@@ -59,6 +59,11 @@ controller owns the printer connection and the UI state; screens are stateless v
 and the notification service read the same cached snapshot. Polling retries with a capped backoff and
 fires immediately when a network returns, so an interrupted link heals without a Connect button.
 
+Navigation is an explicit back stack of pure transitions: the three tabs replace one another, detail
+screens are pushed and popped, and Back always undoes the last thing the user did. The shell keeps a
+bottom bar in tall narrow windows, a rail when the window is wide or short, and caps content width
+rather than stretching it across a tablet.
+
 ```
 app/     phone app (dev.readout.app)
 wear/    standalone watch app (dev.readout.app.wear)
@@ -73,8 +78,8 @@ Thirteen screens, captured on a Galaxy S24 Ultra against the mock server — see
 
 ## Testing
 
-24 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
-handshake and the watch client, several against a real `MockWebServer`.
+56 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
+handshake, the navigation back stack and the watch client, several against a real `MockWebServer`.
 
 ## Known limitations
 
