@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.ComponentTemperature
 import dev.readout.app.data.ConnectionPhase
@@ -265,6 +266,18 @@ private fun JobProgress(snapshot: PrinterSnapshot) {
     Row(Modifier.fillMaxWidth()) {
         Metric("Elapsed", Format.duration(snapshot.printTimeSeconds), Modifier.weight(1f))
         Metric("Left", Format.eta(snapshot.printTimeLeftSeconds), Modifier.weight(1f))
+    }
+    // The clock time the job should end, for as long as it is actually moving. A paused job has
+    // no meaningful ETA, so it is omitted rather than shown stale.
+    if (snapshot.state == MachineState.Printing) {
+        Format.etaEpochMillis(System.currentTimeMillis(), snapshot.printTimeLeftSeconds)?.let { eta ->
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = "ETA " + Format.clockTime(LocalContext.current, eta),
+                style = MaterialTheme.typography.labelLarge,
+                color = muted
+            )
+        }
     }
     Format.etaOrigin(snapshot.etaOrigin)?.let { note ->
         Spacer(Modifier.height(Spacing.s))

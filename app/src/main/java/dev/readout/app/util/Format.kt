@@ -1,5 +1,6 @@
 package dev.readout.app.util
 
+import android.content.Context
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -18,6 +19,14 @@ object Format {
     }
 
     fun eta(seconds: Long?): String = if (seconds == null || seconds <= 0) "—" else duration(seconds)
+
+    /** When the job should finish, as wall-clock time — a duration is not something you can plan around. */
+    fun etaEpochMillis(nowMillis: Long, secondsLeft: Long?): Long? =
+        if (secondsLeft == null || secondsLeft <= 0) null else nowMillis + secondsLeft * 1000
+
+    /** Formatted in the device's locale and 12/24-hour setting. */
+    fun clockTime(context: Context, epochMillis: Long): String =
+        android.text.format.DateFormat.getTimeFormat(context).format(Date(epochMillis))
 
     fun percent(fraction: Float?): String =
         if (fraction == null) "—" else "${(fraction * 100).toInt()}%"
@@ -55,15 +64,17 @@ object Format {
         }
     }
 
+    // Provenance of the estimate, shown under the clock time. It deliberately does not repeat
+    // "ETA": the line above already says it.
     fun etaOrigin(origin: String?): String? = when (origin) {
         null, "" -> null
-        "average" -> "ETA from completed prints"
-        "estimate" -> "ETA estimated from the file"
-        "analysis" -> "ETA from file analysis"
-        "mixed-average" -> "ETA blended with history"
-        "mixed-analysis" -> "ETA blended with analysis"
-        "genius" -> "ETA from PrintTimeGenius"
-        "linear" -> "ETA by linear extrapolation"
-        else -> "ETA source: $origin"
+        "average" -> "From completed prints"
+        "estimate" -> "Estimated from the file"
+        "analysis" -> "From file analysis"
+        "mixed-average" -> "Blended with history"
+        "mixed-analysis" -> "Blended with analysis"
+        "genius" -> "From PrintTimeGenius"
+        "linear" -> "Linear extrapolation from progress"
+        else -> "Source: $origin"
     }
 }
