@@ -12,7 +12,8 @@ no account, no cloud, no analytics.
 - **Files** — filter, inspect, start, upload and batch-delete G-code; a layer-by-layer toolpath
   preview drawn from the file itself; timelapse archive with in-place playback.
 - **Machine** — set temperature targets, jog in 1/10/50 mm steps, home, extrude, send G-code,
-  connect/disconnect, and switch power outputs.
+  connect/disconnect, and switch power outputs. Movement is locked while a job runs, with an opt-in
+  in Settings → Machine.
 - **Power** — PSU Control, OctoRelay and WLED appear as switches when their plugins answer.
 - **Fleet** — several printers with a masthead switcher; pause, resume, cancel or start a file across
   a selection of them.

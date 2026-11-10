@@ -73,9 +73,11 @@ fun SettingsScreen(
     theme: ThemePreference,
     dynamicColor: Boolean,
     notificationsEnabled: Boolean,
+    moveDuringPrint: Boolean,
     onTheme: (ThemePreference) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
+    onMoveDuringPrint: (Boolean) -> Unit,
     onSwitchInstance: (String) -> Unit,
     onRemoveInstance: (PrinterConfig) -> Boolean,
     onAddAnother: () -> Unit,
@@ -233,6 +235,16 @@ fun SettingsScreen(
                 Text("Forget this printer", color = MaterialTheme.colorScheme.error)
             }
         }
+
+        // -- Machine -------------------------------------------------------------------------
+        SectionHeading("Machine")
+        SettingRow(
+            title = "Allow movement while printing",
+            supporting = "Jogging an axis mid-print can shift a layer or drive the head into the " +
+                "part. Off by default; turn it on only when nudging is the lesser evil.",
+            onClick = { onMoveDuringPrint(!moveDuringPrint) },
+            trailing = { Switch(checked = moveDuringPrint, onCheckedChange = null) }
+        )
 
         // -- Notifications -------------------------------------------------------------------
         SectionHeading("Notifications")

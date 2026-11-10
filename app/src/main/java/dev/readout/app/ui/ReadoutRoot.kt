@@ -136,6 +136,7 @@ private fun MainShell(vm: ReadoutViewModel) {
     val themePreference by vm.theme.collectAsStateWithLifecycle()
     val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
     val notificationsEnabled by vm.notifications.collectAsStateWithLifecycle()
+    val moveDuringPrint by vm.moveDuringPrint.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -283,9 +284,11 @@ private fun MainShell(vm: ReadoutViewModel) {
                             theme = themePreference,
                             dynamicColor = dynamicColor,
                             notificationsEnabled = notificationsEnabled,
+                            moveDuringPrint = moveDuringPrint,
                             onTheme = vm::setTheme,
                             onDynamicColor = vm::setDynamicColor,
                             onNotificationsChange = vm::setNotifications,
+                            onMoveDuringPrint = vm::setMoveDuringPrint,
                             onNameChange = { vm.controller.savePrinterName(it) },
                             onWebcamChange = { vm.controller.saveWebcam(it) },
                             onDisconnect = {
@@ -363,7 +366,8 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onGcode = { line -> vm.controller.sendGcode(line) },
                             onConnectPrinter = { vm.controller.connectPrinter() },
                             onDisconnectPrinter = { vm.controller.disconnectPrinter() },
-                            onOpenSettings = { showSettings = true }
+                            onOpenSettings = { showSettings = true },
+                            allowMoveWhilePrinting = moveDuringPrint
                         )
                     }
                 }

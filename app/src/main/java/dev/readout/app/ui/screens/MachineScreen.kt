@@ -36,6 +36,7 @@ import dev.readout.app.data.MachineState
 import dev.readout.app.data.PowerSource
 import dev.readout.app.data.PowerSwitch
 import dev.readout.app.data.PrinterSnapshot
+import dev.readout.app.data.jobInProgress
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.RowDivider
@@ -65,6 +66,7 @@ fun MachineScreen(
     onOpenSettings: () -> Unit,
     powerSwitches: List<PowerSwitch> = emptyList(),
     onTogglePower: (PowerSwitch) -> Unit = {},
+    allowMoveWhilePrinting: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var editing by remember { mutableStateOf<ComponentTemperature?>(null) }
@@ -72,6 +74,8 @@ fun MachineScreen(
     var extrudeAmount by remember { mutableStateOf("10") }
     var command by remember { mutableStateOf("") }
     val history = remember { mutableStateListOf<String>() }
+    // Moving an axis during a job is how prints get ruined; the opt-in lives in Settings.
+    val movementLocked = snapshot?.state?.jobInProgress == true && !allowMoveWhilePrinting
 
     Column(
         modifier = modifier
@@ -138,6 +142,14 @@ fun MachineScreen(
         }
 
         SectionHeading("Movement")
+        if (movementLocked) {
+            Text(
+                text = "Movement is locked while a job is running. You can allow it in Settings → Machine.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(Spacing.s))
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             listOf(1f, 10f, 50f).forEach { value ->
                 FilterChip(
@@ -149,23 +161,23 @@ fun MachineScreen(
         }
         Spacer(Modifier.height(Spacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("X −", Modifier.weight(1f), busy) { onJog("x", -step) }
-            JogButton("X +", Modifier.weight(1f), busy) { onJog("x", step) }
+            JogButton("X −", Modifier.weight(1f), busy || movementLocked) { onJog("x", -step) }
+            JogButton("X +", Modifier.weight(1f), busy || movementLocked) { onJog("x", step) }
         }
         Spacer(Modifier.height(Spacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("Y −", Modifier.weight(1f), busy) { onJog("y", -step) }
-            JogButton("Y +", Modifier.weight(1f), busy) { onJog("y", step) }
+            JogButton("Y −", Modifier.weight(1f), busy || movementLocked) { onJog("y", -step) }
+            JogButton("Y +", Modifier.weight(1f), busy || movementLocked) { onJog("y", step) }
         }
         Spacer(Modifier.height(Spacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("Z −", Modifier.weight(1f), busy) { onJog("z", -step) }
-            JogButton("Z +", Modifier.weight(1f), busy) { onJog("z", step) }
+            JogButton("Z −", Modifier.weight(1f), busy || movementLocked) { onJog("z", -step) }
+            JogButton("Z +", Modifier.weight(1f), busy || movementLocked) { onJog("z", step) }
         }
         Spacer(Modifier.height(Spacing.s))
         OutlinedButton(
             onClick = onHome,
-            enabled = !busy,
+            enabled = !busy && !movementLocked,
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) { Text("Home all axes") }
 
@@ -186,12 +198,12 @@ fun MachineScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
             FilledTonalButton(
                 onClick = { onExtrude(amount) },
-                enabled = !busy && amount > 0f,
+                enabled = !busy && !movementLocked && amount > 0f,
                 modifier = Modifier.weight(1f).height(52.dp)
             ) { Text("Extrude") }
             OutlinedButton(
                 onClick = { onExtrude(-amount) },
-                enabled = !busy && amount > 0f,
+                enabled = !busy && !movementLocked && amount > 0f,
                 modifier = Modifier.weight(1f).height(52.dp)
             ) { Text("Retract") }
         }

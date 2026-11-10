@@ -31,6 +31,17 @@ enum class MachineState {
     Idle, Starting, Printing, Paused, Pausing, Resuming, Cancelling, Finishing, Error, Disconnected, Unknown
 }
 
+/** True while a job occupies the machine — the states where moving an axis can ruin a print. */
+val MachineState.jobInProgress: Boolean
+    get() = this in setOf(
+        MachineState.Starting, MachineState.Printing, MachineState.Paused, MachineState.Pausing,
+        MachineState.Resuming, MachineState.Finishing, MachineState.Cancelling
+    )
+
+/** Movement stays live unless a job is running and the user has opted in to moving anyway. */
+fun movementAllowed(state: MachineState?, allowWhilePrinting: Boolean): Boolean =
+    allowWhilePrinting || state == null || !state.jobInProgress
+
 data class PrinterConfig(
     val id: String = "",
     val baseUrl: String,

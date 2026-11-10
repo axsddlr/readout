@@ -80,6 +80,16 @@ class PrinterStore(context: Context) {
         prefs.edit().putBoolean(KEY_NOTIFICATIONS, enabled).apply()
     }
 
+    /**
+     * Off by default: jogging an axis mid-print can shift a layer or drive the head into the part.
+     * The opt-in exists for the cases where nudging is the lesser evil.
+     */
+    fun moveDuringPrint(): Boolean = prefs.getBoolean(KEY_MOVE_DURING_PRINT, false)
+
+    fun setMoveDuringPrint(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_MOVE_DURING_PRINT, enabled).apply()
+    }
+
     // -- persistence -----------------------------------------------------------------------
 
     private fun migrateIfNeeded() {
@@ -145,6 +155,7 @@ class PrinterStore(context: Context) {
         const val KEY_THEME = "theme_mode"
         const val KEY_DYNAMIC = "dynamic_color"
         const val KEY_NOTIFICATIONS = "live_notifications"
+        const val KEY_MOVE_DURING_PRINT = "move_during_print"
 
         const val LEGACY_URL = "base_url"
         const val LEGACY_KEY = "api_key"

@@ -27,6 +27,14 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     private val _notifications = MutableStateFlow(store.notificationsEnabled())
     val notifications: StateFlow<Boolean> = _notifications.asStateFlow()
 
+    private val _moveDuringPrint = MutableStateFlow(store.moveDuringPrint())
+    val moveDuringPrint: StateFlow<Boolean> = _moveDuringPrint.asStateFlow()
+
+    fun setMoveDuringPrint(enabled: Boolean) {
+        store.setMoveDuringPrint(enabled)
+        _moveDuringPrint.value = enabled
+    }
+
     fun setNotifications(enabled: Boolean) {
         store.setNotificationsEnabled(enabled)
         _notifications.value = enabled
