@@ -50,6 +50,7 @@ class PrinterController(context: Context) {
         context.applicationContext.getSystemService(ConnectivityManager::class.java)
     private var versionLabel: String? = null
     private var powerProbed = false
+    private var layerPluginMissing = false
     private var psuSupported = false
     private var relaySupported = false
     private var wledSupported = false
@@ -237,6 +238,7 @@ class PrinterController(context: Context) {
                 versionLabel = label
                 api = candidate
                 powerProbed = false
+                layerPluginMissing = false
                 psuSupported = false
                 relaySupported = false
                 wledSupported = false
@@ -267,6 +269,7 @@ class PrinterController(context: Context) {
         api = OctoPrintApi(instance.baseUrl, instance.apiKey)
         versionLabel = null
         powerProbed = false
+        layerPluginMissing = false
         psuSupported = false
         relaySupported = false
         wledSupported = false
@@ -329,6 +332,7 @@ class PrinterController(context: Context) {
         api = null
         versionLabel = null
         powerProbed = false
+        layerPluginMissing = false
         psuSupported = false
         relaySupported = false
         wledSupported = false
@@ -603,7 +607,7 @@ class PrinterController(context: Context) {
             if (versionLabel == null) {
                 versionLabel = withContext(Dispatchers.IO) { runCatching { client.probe() }.getOrNull() }
             }
-            val snapshot = SnapshotParser.parse(printer, job, versionLabel)
+            val snapshot = withLayer(SnapshotParser.parse(printer, job, versionLabel), client)
             WidgetRefresher.push(appContext, snapshot)
             _state.update {
                 it.copy(
@@ -623,6 +627,42 @@ class PrinterController(context: Context) {
                 )
             }
         }
+    }
+
+    /**
+     * Fills in the layer the job is on, in the order of what can be trusted: a plugin's exact
+     * count, then a value OctoPrint itself reported, then an estimate from the parsed file. The
+     * estimate needs the file to have been opened once, so it appears only for files the user has
+     * already looked at rather than downloading every job in the background.
+     */
+    private suspend fun withLayer(snapshot: PrinterSnapshot, client: OctoPrintApi): PrinterSnapshot {
+        if (!snapshot.state.jobInProgress) {
+            return snapshot.copy(layer = null, layerCount = null, layerEstimated = false)
+        }
+        if (snapshot.layer != null && snapshot.layerCount != null) return snapshot
+
+        if (!layerPluginMissing) {
+            val reading = withContext(Dispatchers.IO) {
+                runCatching { client.displayLayerProgress() }.getOrNull()
+            }
+            if (reading != null) {
+                return snapshot.copy(
+                    layer = reading.first,
+                    layerCount = reading.second,
+                    layerEstimated = false
+                )
+            }
+            layerPluginMissing = true
+        }
+
+        val key = listOfNotNull(snapshot.jobOrigin, snapshot.jobPath).joinToString("/")
+        val preview = previewCache[key] ?: return snapshot
+        val current = estimateLayer(preview, snapshot.progress) ?: return snapshot
+        return snapshot.copy(
+            layer = current,
+            layerCount = preview.layers.size,
+            layerEstimated = true
+        )
     }
 
     private suspend fun refreshPower(client: OctoPrintApi) {

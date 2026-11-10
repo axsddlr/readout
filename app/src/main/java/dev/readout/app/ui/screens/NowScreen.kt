@@ -258,7 +258,13 @@ private fun JobProgress(snapshot: PrinterSnapshot) {
         Spacer(Modifier.weight(1f))
         if (snapshot.layer != null && snapshot.layerCount != null) {
             Text(
-                "Layer ${snapshot.layer} of ${snapshot.layerCount}",
+                // An estimated layer is marked, because it is derived from the completion
+                // percentage rather than read from the machine.
+                text = if (snapshot.layerEstimated) {
+                    "≈ Layer ${snapshot.layer} of ${snapshot.layerCount}"
+                } else {
+                    "Layer ${snapshot.layer} of ${snapshot.layerCount}"
+                },
                 style = MaterialTheme.typography.labelLarge,
                 color = muted,
                 modifier = Modifier.padding(bottom = Spacing.s)

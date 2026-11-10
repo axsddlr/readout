@@ -7,8 +7,9 @@ no account, no cloud, no analytics.
 
 ## Features
 
-- **Now** — state, job, progress, elapsed/remaining with ETA provenance, camera still, temperatures,
-  pause/resume/cancel.
+- **Now** — state, job, progress, elapsed/remaining with ETA provenance, layer progress (exact from
+  DisplayLayerProgress, otherwise estimated from a file the app has already opened), camera still,
+  temperatures, pause/resume/cancel.
 - **Files** — filter, inspect, start, upload and batch-delete G-code; a layer-by-layer toolpath
   preview drawn from the file itself, with the model's size, layer height, filament and print time,
   and per-layer height, command count and duration as you scrub; timelapse archive with in-place
@@ -80,9 +81,9 @@ Thirteen screens, captured on a Galaxy S24 Ultra against the mock server — see
 
 ## Testing
 
-60 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
-handshake, the navigation back stack, G-code statistics and the watch client, several against a real
-`MockWebServer`.
+66 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
+handshake, the navigation back stack, G-code statistics, layer estimation and the watch client,
+several against a real `MockWebServer`.
 
 ## Known limitations
 

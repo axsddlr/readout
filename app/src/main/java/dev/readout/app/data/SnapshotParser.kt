@@ -33,6 +33,8 @@ object SnapshotParser {
             etaOrigin = progress?.optString("printTimeLeftOrigin")?.takeIf { it.isNotBlank() },
             layer = progress?.optIntOrNull("layer"),
             layerCount = progress?.optIntOrNull("layerCount") ?: jobInfo?.optIntOrNull("layerCount"),
+            jobOrigin = file?.optString("origin")?.takeIf { it.isNotBlank() && it != "null" },
+            jobPath = file?.optString("path")?.takeIf { it.isNotBlank() && it != "null" },
             octoPrintVersion = version,
             connectionText = printer.optJSONObject("connection")
                 ?.optJSONObject("current")

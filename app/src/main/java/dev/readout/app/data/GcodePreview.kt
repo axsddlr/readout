@@ -80,6 +80,27 @@ data class GcodePreview(
 }
 
 /**
+ * Where a running print is, layer-wise, using the file's own per-layer durations: the first layer
+ * whose cumulative move time covers the completed fraction.
+ *
+ * This is an estimate, not a measurement. OctoPrint's completion is a fraction of its own time
+ * estimate, and our per-layer seconds ignore acceleration, so the two are related but not equal.
+ */
+fun estimateLayer(preview: GcodePreview?, completion: Float?): Int? {
+    if (preview == null || preview.isEmpty || completion == null) return null
+    val seconds = preview.layers.map { it.seconds }
+    val total = seconds.sum()
+    if (total <= 0f) return null
+    val target = completion.coerceIn(0f, 1f) * total
+    var accumulated = 0f
+    seconds.forEachIndexed { index, layerSeconds ->
+        accumulated += layerSeconds
+        if (layerSeconds > 0f && accumulated >= target) return index + 1
+    }
+    return seconds.size
+}
+
+/**
  * Reads a G-code stream into per-layer line segments and their statistics. The subset is small on
  * purpose: G0/G1, G90/G91, M82/M83, G92, plus the two comment forms slicers use to state a duration.
  */

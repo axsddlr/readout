@@ -59,6 +59,28 @@ class OctoPrintApiPluginsTest {
     }
 
     @Test
+    fun `display layer progress reads the layer pair and tolerates the plugin being absent`() {
+        val api = OctoPrintApi(server.url("/").toString(), "key")
+
+        server.enqueue(MockResponse().setBody("""{"layer":{"current":41,"total":105}}"""))
+        assertEquals(41 to 105, api.displayLayerProgress())
+        assertEquals("/api/plugin/DisplayLayerProgress/values", server.takeRequest().path)
+
+        // The plugin reports strings in some versions.
+        server.enqueue(MockResponse().setBody("""{"layer":{"current":"7","total":"9"}}"""))
+        assertEquals(7 to 9, api.displayLayerProgress())
+
+        // Nothing counted yet, and the plugin's own error shape.
+        server.enqueue(MockResponse().setBody("""{"layer":{"current":0,"total":0}}"""))
+        assertNull(api.displayLayerProgress())
+        server.enqueue(MockResponse().setBody("""{"error":"printer is not printing"}"""))
+        assertNull(api.displayLayerProgress())
+
+        server.enqueue(MockResponse().setResponseCode(404))
+        assertNull(api.displayLayerProgress())
+    }
+
+    @Test
     fun `relay commands post the documented update payload`() {
         server.enqueue(MockResponse().setBody("{}"))
         val api = OctoPrintApi(server.url("/").toString(), "key")

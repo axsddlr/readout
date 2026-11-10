@@ -99,6 +99,26 @@ const server = http.createServer((req, res) => {
     return send(job);
   }
   if (url === "/api/files") return send(files);
+
+  // A synthetic ten-layer file for the toolpath preview and its statistics. Uniform 4 s layers,
+  // so at 41.7% completion the layer estimate should read 5 of 10.
+  if (url.startsWith("/downloads/files/")) {
+    const lines = [";TIME:4980"];
+    for (let z = 1; z <= 10; z++) {
+      lines.push("G90", "M83");
+      lines.push("G1 Z" + (z * 0.2).toFixed(1));
+      lines.push("G1 X20 Y0 E1 F600");
+      lines.push("G1 X20 Y20 E2");
+      lines.push("G1 X0 Y0");
+    }
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+    return res.end(lines.join("\n") + "\n");
+  }
+
+  if (url === "/api/plugin/DisplayLayerProgress/values") {
+    if (!process.env.MOCK_LAYER_PLUGIN) return send({ error: "unknown plugin" }, 404);
+    return send({ layer: { current: 4, total: 10 } });
+  }
   if (url === "/api/connection") return send({ current: { state: "Operational" } });
   if (url.startsWith("/webcam")) {
     const png = require("path").join(__dirname, "camera-test.png");

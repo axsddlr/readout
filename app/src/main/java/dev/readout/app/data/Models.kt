@@ -12,6 +12,10 @@ data class PrinterSnapshot(
     val etaOrigin: String? = null,
     val layer: Int? = null,
     val layerCount: Int? = null,
+    /** True when the layer was derived from completion rather than reported by a plugin. */
+    val layerEstimated: Boolean = false,
+    val jobOrigin: String? = null,
+    val jobPath: String? = null,
     val octoPrintVersion: String? = null,
     val connectionText: String? = null
 )

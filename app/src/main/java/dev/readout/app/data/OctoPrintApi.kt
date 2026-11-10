@@ -131,6 +131,19 @@ class OctoPrintApi(
         return payload.asObject().optBoolean("isPSUOn", false)
     }
 
+    /**
+     * DisplayLayerProgress: the layer the machine is on and the file's total. Null when the plugin
+     * is absent — its 404 is an answer, not a failure — or when it has no count yet.
+     */
+    fun displayLayerProgress(): Pair<Int, Int>? {
+        val payload = requestOptional("/api/plugin/DisplayLayerProgress/values") ?: return null
+        val layer = payload.asObject().optJSONObject("layer") ?: return null
+        val current = layer.optInt("current", -1)
+        val total = layer.optInt("total", -1)
+        if (current <= 0 || total <= 0 || current > total) return null
+        return current to total
+    }
+
     fun setPsu(on: Boolean) {
         command("/api/plugin/psucontrol", JSONObject().put("command", if (on) "turnPSUOn" else "turnPSUOff"))
     }
