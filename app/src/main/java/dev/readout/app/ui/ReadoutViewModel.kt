@@ -2,6 +2,7 @@ package dev.readout.app.ui
 
 import android.app.Application
 import android.graphics.BitmapFactory
+import android.os.SystemClock
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
@@ -113,7 +114,13 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun cameraLoop() = coroutineScope {
         val frames = Channel<ByteArray>(capacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
         val decoder = launch(Dispatchers.Default) {
+            var lastDecoded = 0L
             for (bytes in frames) {
+                // The camera pushes ~25 fps; a small card cannot show that and the decode cost is
+                // real, so the UI settles on about ten frames a second.
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastDecoded < MIN_FRAME_INTERVAL_MS) continue
+                lastDecoded = now
                 decodeFrame(bytes)?.let { _cameraFrame.value = it }
             }
         }
@@ -170,5 +177,9 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         stopCamera()
         controller.shutdown()
         super.onCleared()
+    }
+
+    private companion object {
+        const val MIN_FRAME_INTERVAL_MS = 100L
     }
 }
