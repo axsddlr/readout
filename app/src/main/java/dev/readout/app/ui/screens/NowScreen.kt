@@ -355,6 +355,7 @@ private fun CameraSettingsSheet(
             Modifier
                 .padding(horizontal = Spacing.xl)
                 .padding(bottom = Spacing.xxl)
+                .verticalScroll(rememberScrollState())
         ) {
             Text("Camera settings", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(Spacing.xs))

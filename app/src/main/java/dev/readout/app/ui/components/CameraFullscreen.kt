@@ -36,10 +36,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -72,13 +74,6 @@ fun CameraFullscreen(
     val activity = remember(context) { context.findActivity() }
 
     DisposableEffect(settings.ignoreRotationLock) {
-        val window = activity?.window
-        val controller = window?.let {
-            WindowCompat.getInsetsController(it, it.decorView)
-        }
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-        controller?.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         val previous = activity?.requestedOrientation
         // Only override when asked: otherwise the phone's rotation lock keeps working, which is
         // what someone watching from a clamped mount expects.
@@ -86,7 +81,6 @@ fun CameraFullscreen(
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
         }
         onDispose {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
             activity?.requestedOrientation =
                 previous ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
@@ -105,6 +99,7 @@ fun CameraFullscreen(
         )
     ) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
+            HideDialogSystemBars()
             if (frame != null) {
                 Image(
                     bitmap = frame!!,
@@ -237,9 +232,25 @@ fun CameraFullscreen(
     }
 }
 
+/**
+ * Hides the system bars on the dialog's own window: the dialog is a separate window, so hiding
+ * them on the activity window has no effect here.
+ */
 @Composable
-private fun OverlayMetric(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier) {
+private fun HideDialogSystemBars() {
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val window = (view.parent as? DialogWindowProvider)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        controller?.hide(WindowInsetsCompat.Type.systemBars())
+        controller?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+}
+
+@Composable
+private fun OverlayMetric(label: String, value: String, modifier: Modifier = Modifier) {    Column(modifier) {
         Text(
             label,
             style = MaterialTheme.typography.labelSmall,
