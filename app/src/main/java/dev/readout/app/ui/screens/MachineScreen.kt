@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.readout.app.data.ComponentTemperature
 import dev.readout.app.data.Gcode
 import dev.readout.app.data.MachineState
@@ -179,8 +180,8 @@ fun MachineScreen(
             }
         }
         Spacer(Modifier.height(Spacing.s))
-        // The pad is X and Z: up/down walks the bed, left/right raises and lowers it. Y keeps its
-        // own column, so every axis stays reachable and each label names what it moves.
+        // The pad moves the bed: left/right is X, up/down is Y. Z keeps its own column, and every
+        // button prints the axis it sends, so the mapping cannot be misread.
         Plate(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Spacing.s),
@@ -189,7 +190,7 @@ fun MachineScreen(
                 Spacer(Modifier.width(Spacing.s))
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "X / Z",
+                        "X / Y",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -199,42 +200,47 @@ fun MachineScreen(
                             Spacer(Modifier.width(AXIS_BUTTON))
                             AxisButton(
                                 Icons.Filled.KeyboardArrowUp,
-                                "Move X forward",
+                                tag = "Y+",
+                                description = "Move Y positive",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("x", step) }
+                            ) { onJog("y", step) }
                             Spacer(Modifier.width(AXIS_BUTTON))
                         }
                         Row {
                             AxisButton(
                                 Icons.Filled.KeyboardArrowLeft,
-                                "Lower Z",
+                                tag = "X−",
+                                description = "Move X negative",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("z", -step) }
+                            ) { onJog("x", -step) }
                             AxisButton(
                                 Icons.Filled.Home,
-                                "Home X and Z",
+                                tag = null,
+                                description = "Home X and Y",
                                 enabled = !busy && !movementLocked
-                            ) { onHome(listOf("x", "z")) }
+                            ) { onHome(listOf("x", "y")) }
                             AxisButton(
                                 Icons.Filled.KeyboardArrowRight,
-                                "Raise Z",
+                                tag = "X+",
+                                description = "Move X positive",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("z", step) }
+                            ) { onJog("x", step) }
                         }
                         Row {
                             Spacer(Modifier.width(AXIS_BUTTON))
                             AxisButton(
                                 Icons.Filled.KeyboardArrowDown,
-                                "Move X back",
+                                tag = "Y−",
+                                description = "Move Y negative",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("x", -step) }
+                            ) { onJog("y", -step) }
                             Spacer(Modifier.width(AXIS_BUTTON))
                         }
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "Y",
+                        "Z",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -242,19 +248,22 @@ fun MachineScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                         AxisButton(
                             Icons.Filled.KeyboardArrowUp,
-                            "Move Y positive",
+                            tag = "Z+",
+                            description = "Raise Z",
                             enabled = !busy && !movementLocked
-                        ) { onJog("y", step) }
+                        ) { onJog("z", step) }
                         AxisButton(
                             Icons.Filled.Home,
-                            "Home Y",
+                            tag = null,
+                            description = "Home Z",
                             enabled = !busy && !movementLocked
-                        ) { onHome(listOf("y")) }
+                        ) { onHome(listOf("z")) }
                         AxisButton(
                             Icons.Filled.KeyboardArrowDown,
-                            "Move Y negative",
+                            tag = "Z−",
+                            description = "Lower Z",
                             enabled = !busy && !movementLocked
-                        ) { onJog("y", -step) }
+                        ) { onJog("z", -step) }
                     }
                 }
                 Spacer(Modifier.width(Spacing.s))
@@ -432,6 +441,7 @@ fun MachineScreen(
 @Composable
 private fun AxisButton(
     icon: ImageVector,
+    tag: String?,
     description: String,
     enabled: Boolean,
     onClick: () -> Unit
@@ -443,7 +453,12 @@ private fun AxisButton(
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.size(AXIS_BUTTON)
     ) {
-        Icon(icon, contentDescription = description)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = description, modifier = Modifier.size(20.dp))
+            if (tag != null) {
+                Text(tag, style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+            }
+        }
     }
 }
 
@@ -496,4 +511,4 @@ private fun ModifierRow(
 private fun stepLabel(value: Float): String =
     if (value < 1f) value.toString() else value.toInt().toString()
 
-private val AXIS_BUTTON = 56.dp
+private val AXIS_BUTTON = 64.dp
