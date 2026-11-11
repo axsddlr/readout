@@ -12,8 +12,9 @@ no account, no cloud, no analytics.
   camera with a stills fallback, temperatures, pause/resume/cancel.
 - **Files** — filter, inspect, start, upload and batch-delete G-code; a layer-by-layer toolpath
   preview drawn from the file itself, with the model's size, layer height, filament and print time,
-  and per-layer height, command count and duration as you scrub; timelapse archive with in-place
-  playback.
+  and per-layer height, command count and duration as you scrub; the drawing can show the previous
+  and current layer and trades ghost detail for speed at three qualities; timelapse archive with
+  in-place playback.
 - **Machine** — set temperature targets, jog in 1/10/50 mm steps, home, extrude, send G-code,
   connect/disconnect, and switch power outputs. Movement is locked while a job runs, with an opt-in
   in Settings → Machine.
@@ -81,9 +82,9 @@ Thirteen screens, captured on a Galaxy S24 Ultra against the mock server — see
 
 ## Testing
 
-78 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
+82 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
 handshake, the navigation back stack, G-code statistics, layer estimation, MJPEG framing, camera URL
-resolution and the watch client, several against a real `MockWebServer`.
+resolution, preview drawing settings and the watch client, several against a real `MockWebServer`.
 
 ## Known limitations
 

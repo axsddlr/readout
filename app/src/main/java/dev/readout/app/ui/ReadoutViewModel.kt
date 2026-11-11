@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import dev.readout.app.data.CameraRead
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.PrinterConfig
+import dev.readout.app.data.PreviewSettings
 import dev.readout.app.data.PrinterController
 import dev.readout.app.data.PrinterStore
 import dev.readout.app.data.ThemePreference
@@ -55,6 +56,14 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     /** False once both the stream and the snapshot failed, so the card can offer setup instead. */
     private val _cameraAvailable = MutableStateFlow(true)
     val cameraAvailable: StateFlow<Boolean> = _cameraAvailable.asStateFlow()
+
+    private val _previewSettings = MutableStateFlow(store.previewSettings())
+    val previewSettings: StateFlow<PreviewSettings> = _previewSettings.asStateFlow()
+
+    fun setPreviewSettings(settings: PreviewSettings) {
+        store.setPreviewSettings(settings)
+        _previewSettings.value = settings
+    }
 
     private var cameraVisible = false
     private var cameraJob: Job? = null

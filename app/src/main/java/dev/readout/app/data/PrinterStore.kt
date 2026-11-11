@@ -90,6 +90,23 @@ class PrinterStore(context: Context) {
         prefs.edit().putBoolean(KEY_MOVE_DURING_PRINT, enabled).apply()
     }
 
+    /** The preview's own settings, shared across printers: they describe how to draw, not what to draw. */
+    fun previewSettings(): PreviewSettings = PreviewSettings(
+        previousLayer = prefs.getBoolean(KEY_PREVIEW_PREVIOUS, true),
+        currentLayer = prefs.getBoolean(KEY_PREVIEW_CURRENT, true),
+        quality = PreviewQuality.entries
+            .firstOrNull { it.name == prefs.getString(KEY_PREVIEW_QUALITY, null) }
+            ?: PreviewQuality.Medium
+    )
+
+    fun setPreviewSettings(settings: PreviewSettings) {
+        prefs.edit()
+            .putBoolean(KEY_PREVIEW_PREVIOUS, settings.previousLayer)
+            .putBoolean(KEY_PREVIEW_CURRENT, settings.currentLayer)
+            .putString(KEY_PREVIEW_QUALITY, settings.quality.name)
+            .apply()
+    }
+
     // -- persistence -----------------------------------------------------------------------
 
     private fun migrateIfNeeded() {
@@ -156,6 +173,9 @@ class PrinterStore(context: Context) {
         const val KEY_DYNAMIC = "dynamic_color"
         const val KEY_NOTIFICATIONS = "live_notifications"
         const val KEY_MOVE_DURING_PRINT = "move_during_print"
+        const val KEY_PREVIEW_PREVIOUS = "preview_previous_layer"
+        const val KEY_PREVIEW_CURRENT = "preview_current_layer"
+        const val KEY_PREVIEW_QUALITY = "preview_quality"
 
         const val LEGACY_URL = "base_url"
         const val LEGACY_KEY = "api_key"

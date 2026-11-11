@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,20 +24,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +53,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +70,8 @@ import androidx.compose.ui.unit.dp
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.FileEntry
 import dev.readout.app.data.GcodePreview
+import dev.readout.app.data.PreviewQuality
+import dev.readout.app.data.PreviewSettings
 import dev.readout.app.ui.ReadoutIcons
 import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
@@ -92,6 +101,8 @@ fun FilesScreen(
     onDelete: (FileEntry) -> Unit,
     onOpenTimelapses: () -> Unit,
     loadPreview: suspend (FileEntry) -> GcodePreview,
+    previewSettings: PreviewSettings,
+    onPreviewSettings: (PreviewSettings) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var files by remember { mutableStateOf<List<FileEntry>>(emptyList()) }
@@ -358,6 +369,8 @@ fun FilesScreen(
         FileSheet(
             file = file,
             loadPreview = loadPreview,
+            previewSettings = previewSettings,
+            onPreviewSettings = onPreviewSettings,
             onDismiss = { selected = null },
             onPrint = {
                 selected = null
@@ -446,6 +459,8 @@ private data class UploadProgress(val name: String, val progress: Float)
 private fun FileSheet(
     file: FileEntry,
     loadPreview: suspend (FileEntry) -> GcodePreview,
+    previewSettings: PreviewSettings,
+    onPreviewSettings: (PreviewSettings) -> Unit,
     onDismiss: () -> Unit,
     onPrint: () -> Unit,
     onDelete: () -> Unit
@@ -456,6 +471,7 @@ private fun FileSheet(
     var preview by remember(file) { mutableStateOf<GcodePreview?>(null) }
     var previewError by remember(file) { mutableStateOf<String?>(null) }
     var layerIndex by remember(file) { mutableIntStateOf(0) }
+    var showPreviewSettings by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(file) {
         runCatching { loadPreview(file) }
@@ -484,8 +500,15 @@ private fun FileSheet(
                 preview = preview,
                 error = previewError,
                 layerIndex = layerIndex,
-                onLayer = { layerIndex = it }
+                onLayer = { layerIndex = it },
+                settings = previewSettings,
+                settingsOpen = showPreviewSettings,
+                onToggleSettings = { showPreviewSettings = !showPreviewSettings }
             )
+            if (showPreviewSettings && preview?.isEmpty == false) {
+                Spacer(Modifier.height(Spacing.s))
+                PreviewSettingsPanel(settings = previewSettings, onChange = onPreviewSettings)
+            }
             Spacer(Modifier.height(Spacing.l))
             // The reason this sheet exists comes before the measurements, so a long list of
             // statistics can never push "Start print" off the first screen.
@@ -567,7 +590,10 @@ private fun ToolpathPreview(
     preview: GcodePreview?,
     error: String?,
     layerIndex: Int,
-    onLayer: (Int) -> Unit
+    onLayer: (Int) -> Unit,
+    settings: PreviewSettings,
+    settingsOpen: Boolean,
+    onToggleSettings: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     when {
@@ -608,10 +634,17 @@ private fun ToolpathPreview(
                     }
                 }
             }
-            val wholePart = remember(layerPaths) {
-                Path().apply { layerPaths.forEach { addPath(it) } }
+            // The ghost is the whole part, so it is the expensive one to draw; the quality setting
+            // decides how many of its segments survive.
+            val wholePart = remember(layerPaths, settings.ghostStep) {
+                if (settings.ghostStep <= 1) {
+                    Path().apply { layerPaths.forEach { addPath(it) } }
+                } else {
+                    sampledPath(preview, settings.ghostStep)
+                }
             }
             val layer = layerPaths.getOrNull(layerIndex)
+            val previous = if (settings.previousLayer) layerPaths.getOrNull(layerIndex - 1) else null
             Canvas(
                 Modifier
                     .fillMaxWidth()
@@ -619,7 +652,7 @@ private fun ToolpathPreview(
                     .clip(MaterialTheme.shapes.medium)
                     .background(scheme.surfaceContainerHighest)
             ) {
-                if (layer != null) {
+                if (layer != null || previous != null) {
                     val pad = 12f
                     val scale = min(
                         (size.width - pad * 2) / preview.xyWidth,
@@ -638,11 +671,22 @@ private fun ToolpathPreview(
                             scheme.primary.copy(alpha = 0.16f),
                             style = Stroke(width = 1.2f / scale)
                         )
-                        drawPath(
-                            layer,
-                            scheme.primary,
-                            style = Stroke(width = 1.8f / scale, cap = StrokeCap.Round)
-                        )
+                        // The layer underneath, heavier than the ghost so the pair reads as
+                        // "where it has been, where it is".
+                        if (previous != null) {
+                            drawPath(
+                                previous,
+                                scheme.primary.copy(alpha = 0.42f),
+                                style = Stroke(width = (settings.strokeWidth + 0.6f) / scale, cap = StrokeCap.Round)
+                            )
+                        }
+                        if (settings.currentLayer) {
+                            drawPath(
+                                layer ?: previous!!,
+                                scheme.primary,
+                                style = Stroke(width = settings.strokeWidth / scale, cap = StrokeCap.Round)
+                            )
+                        }
                     }
                 }
             }
@@ -660,9 +704,18 @@ private fun ToolpathPreview(
                 Spacer(Modifier.weight(1f))
                 if (preview.truncated) {
                     Text(
-                        text = "preview limited to the start of the file",
+                        text = "partial file",
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(Spacing.s))
+                }
+                IconButton(onClick = onToggleSettings, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (settingsOpen) Icons.Filled.Close else Icons.Filled.Settings,
+                        contentDescription = if (settingsOpen) "Hide preview settings" else "Preview settings",
+                        tint = if (settingsOpen) scheme.onSurface else scheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -674,5 +727,79 @@ private fun ToolpathPreview(
                 )
             }
         }
+    }
+}
+
+/** The whole part as every [step]-th extruding segment: a cheaper ghost for large files. */
+private fun sampledPath(preview: GcodePreview, step: Int): Path {
+    var counter = 0
+    val path = Path()
+    for (layer in preview.layers) {
+        for (line in layer.lines) {
+            if (!line.extruding) continue
+            if (counter++ % step != 0) continue
+            path.moveTo(line.x1, line.y1)
+            path.lineTo(line.x2, line.y2)
+        }
+    }
+    return path
+}
+
+/** What the preview draws, in the shape of the sheet it lives in. */
+@Composable
+private fun PreviewSettingsPanel(settings: PreviewSettings, onChange: (PreviewSettings) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(scheme.surfaceContainer)
+            .padding(horizontal = Spacing.l)
+    ) {
+        PreviewToggle(
+            title = "Show previous layer",
+            checked = settings.previousLayer,
+            onChange = { onChange(settings.copy(previousLayer = it)) }
+        )
+        PreviewToggle(
+            title = "Show current layer",
+            checked = settings.currentLayer,
+            onChange = { onChange(settings.copy(currentLayer = it)) }
+        )
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Drawing quality", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(Spacing.m))
+            PreviewQuality.entries.forEach { quality ->
+                FilterChip(
+                    selected = settings.quality == quality,
+                    onClick = { onChange(settings.copy(quality = quality)) },
+                    label = { Text(quality.name) },
+                    modifier = Modifier.padding(start = Spacing.xs)
+                )
+            }
+        }
+        Text(
+            text = settings.qualityDescription,
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Spacing.m)
+        )
+    }
+}
+
+@Composable
+private fun PreviewToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable { onChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

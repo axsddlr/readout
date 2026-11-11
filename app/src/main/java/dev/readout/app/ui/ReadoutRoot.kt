@@ -149,6 +149,7 @@ private fun MainShell(vm: ReadoutViewModel) {
     val cameraFrame by vm.cameraFrame.collectAsStateWithLifecycle()
     val cameraLive by vm.cameraLive.collectAsStateWithLifecycle()
     val cameraAvailable by vm.cameraAvailable.collectAsStateWithLifecycle()
+    val previewSettings by vm.previewSettings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -366,7 +367,9 @@ private fun MainShell(vm: ReadoutViewModel) {
                                 notify("Deleted ${file.name}")
                             },
                             onOpenTimelapses = { stack = Nav.push(stack, Route.Timelapses) },
-                            loadPreview = { file -> vm.controller.loadPreview(file) }
+                            loadPreview = { file -> vm.controller.loadPreview(file) },
+                            previewSettings = previewSettings,
+                            onPreviewSettings = vm::setPreviewSettings
                         )
 
                         Route.Machine -> MachineScreen(
