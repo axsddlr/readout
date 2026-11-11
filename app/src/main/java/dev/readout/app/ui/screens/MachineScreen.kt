@@ -1,6 +1,7 @@
 package dev.readout.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,12 +9,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,11 +36,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.readout.app.data.ComponentTemperature
+import dev.readout.app.data.Gcode
 import dev.readout.app.data.MachineState
 import dev.readout.app.data.PowerSource
 import dev.readout.app.data.PowerSwitch
@@ -58,7 +70,7 @@ fun MachineScreen(
     busy: Boolean,
     onSetTarget: (ComponentTemperature, Int) -> Unit,
     onJog: (String, Float) -> Unit,
-    onHome: () -> Unit,
+    onHome: (List<String>) -> Unit,
     onExtrude: (Float) -> Unit,
     onGcode: (String) -> Unit,
     onConnectPrinter: () -> Unit,
@@ -72,6 +84,8 @@ fun MachineScreen(
     var editing by remember { mutableStateOf<ComponentTemperature?>(null) }
     var step by remember { mutableStateOf(10f) }
     var extrudeAmount by remember { mutableStateOf("10") }
+    var feedRate by remember { mutableStateOf("100") }
+    var flowRate by remember { mutableStateOf("100") }
     var command by remember { mutableStateOf("") }
     val history = remember { mutableStateListOf<String>() }
     // Moving an axis during a job is how prints get ruined; the opt-in lives in Settings.
@@ -150,42 +164,113 @@ fun MachineScreen(
             )
             Spacer(Modifier.height(Spacing.s))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            listOf(1f, 10f, 50f).forEach { value ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Text(
+                "Step",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            listOf(0.1f, 1f, 10f, 100f).forEach { value ->
                 FilterChip(
                     selected = step == value,
                     onClick = { step = value },
-                    label = { Text("${value.toInt()} mm") }
+                    label = { Text(stepLabel(value)) }
                 )
             }
         }
         Spacer(Modifier.height(Spacing.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("X −", Modifier.weight(1f), busy || movementLocked) { onJog("x", -step) }
-            JogButton("X +", Modifier.weight(1f), busy || movementLocked) { onJog("x", step) }
-        }
-        Spacer(Modifier.height(Spacing.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("Y −", Modifier.weight(1f), busy || movementLocked) { onJog("y", -step) }
-            JogButton("Y +", Modifier.weight(1f), busy || movementLocked) { onJog("y", step) }
-        }
-        Spacer(Modifier.height(Spacing.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            JogButton("Z −", Modifier.weight(1f), busy || movementLocked) { onJog("z", -step) }
-            JogButton("Z +", Modifier.weight(1f), busy || movementLocked) { onJog("z", step) }
+        // The cross OctoPrint users know: X and Y around a home button, Z standing beside them.
+        Plate(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = Spacing.s),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "X / Y",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Column {
+                        Row {
+                            Spacer(Modifier.width(AXIS_BUTTON))
+                            AxisButton(
+                                Icons.Filled.KeyboardArrowUp,
+                                "Move Y positive",
+                                enabled = !busy && !movementLocked
+                            ) { onJog("y", step) }
+                            Spacer(Modifier.width(AXIS_BUTTON))
+                        }
+                        Row {
+                            AxisButton(
+                                Icons.Filled.KeyboardArrowLeft,
+                                "Move X negative",
+                                enabled = !busy && !movementLocked
+                            ) { onJog("x", -step) }
+                            AxisButton(
+                                Icons.Filled.Home,
+                                "Home X and Y",
+                                enabled = !busy && !movementLocked
+                            ) { onHome(listOf("x", "y")) }
+                            AxisButton(
+                                Icons.Filled.KeyboardArrowRight,
+                                "Move X positive",
+                                enabled = !busy && !movementLocked
+                            ) { onJog("x", step) }
+                        }
+                        Row {
+                            Spacer(Modifier.width(AXIS_BUTTON))
+                            AxisButton(
+                                Icons.Filled.KeyboardArrowDown,
+                                "Move Y negative",
+                                enabled = !busy && !movementLocked
+                            ) { onJog("y", -step) }
+                            Spacer(Modifier.width(AXIS_BUTTON))
+                        }
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Z",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowUp,
+                            "Move Z positive",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("z", step) }
+                        AxisButton(
+                            Icons.Filled.Home,
+                            "Home Z",
+                            enabled = !busy && !movementLocked
+                        ) { onHome(listOf("z")) }
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowDown,
+                            "Move Z negative",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("z", -step) }
+                    }
+                }
+                Spacer(Modifier.width(Spacing.s))
+            }
         }
         Spacer(Modifier.height(Spacing.s))
         OutlinedButton(
-            onClick = onHome,
+            onClick = { onHome(listOf("x", "y", "z")) },
             enabled = !busy && !movementLocked,
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) { Text("Home all axes") }
 
-        SectionHeading("Extrude")
+        SectionHeading("Tool (E)")
         OutlinedTextField(
             value = extrudeAmount,
             onValueChange = { extrudeAmount = it.filter { ch -> ch.isDigit() }.take(3) },
-            label = { Text("Millimetres") },
+            label = { Text("Amount") },
+            suffix = { Text("mm") },
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = KeyboardType.Number
@@ -207,6 +292,43 @@ fun MachineScreen(
                 modifier = Modifier.weight(1f).height(52.dp)
             ) { Text("Retract") }
         }
+
+        SectionHeading("General")
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            // Dropping the steppers mid-print drops the head, so it follows the movement lock.
+            CompactButton(
+                label = "Motors off",
+                enabled = !busy && !movementLocked,
+                modifier = Modifier.weight(1f)
+            ) { onGcode(Gcode.MOTORS_OFF) }
+            CompactButton(
+                label = "Fan on",
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { onGcode(Gcode.FAN_ON) }
+            CompactButton(
+                label = "Fan off",
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { onGcode(Gcode.FAN_OFF) }
+        }
+
+        SectionHeading("Modifiers")
+        ModifierRow(
+            title = "Feed rate",
+            value = feedRate,
+            enabled = !busy,
+            onValueChange = { feedRate = it },
+            onSet = { onGcode(Gcode.feedRate(feedRate.toIntOrNull() ?: 100)) }
+        )
+        Spacer(Modifier.height(Spacing.s))
+        ModifierRow(
+            title = "Flow rate",
+            value = flowRate,
+            enabled = !busy,
+            onValueChange = { flowRate = it },
+            onSet = { onGcode(Gcode.flowRate(flowRate.toIntOrNull() ?: 100)) }
+        )
 
         SectionHeading("Command")
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -306,13 +428,70 @@ fun MachineScreen(
 }
 
 @Composable
-private fun JogButton(label: String, modifier: Modifier, busy: Boolean, onClick: () -> Unit) {
+private fun AxisButton(
+    icon: ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
     FilledTonalButton(
         onClick = onClick,
-        enabled = !busy,
-        modifier = modifier.height(56.dp),
-        shape = MaterialTheme.shapes.large
+        enabled = enabled,
+        contentPadding = PaddingValues(0.dp),
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.size(AXIS_BUTTON)
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        Icon(icon, contentDescription = description)
     }
 }
+
+@Composable
+private fun CompactButton(
+    label: String,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = PaddingValues(horizontal = Spacing.s),
+        modifier = modifier.height(48.dp)
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
+}
+
+/** A percentage with a Set button, as the Control tab presents feed and flow overrides. */
+@Composable
+private fun ModifierRow(
+    title: String,
+    value: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+    onSet: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { onValueChange(it.filter { ch -> ch.isDigit() }.take(3)) },
+            label = { Text(title) },
+            suffix = { Text("%") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(Spacing.s))
+        Button(
+            onClick = onSet,
+            enabled = enabled && value.isNotBlank(),
+            modifier = Modifier.height(56.dp)
+        ) { Text("Set") }
+    }
+}
+
+private fun stepLabel(value: Float): String =
+    if (value < 1f) value.toString() else value.toInt().toString()
+
+private val AXIS_BUTTON = 56.dp

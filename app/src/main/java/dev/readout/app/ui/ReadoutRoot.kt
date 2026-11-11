@@ -391,7 +391,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onTogglePower = { switch -> vm.controller.togglePower(switch) },
                             onSetTarget = { component, value -> vm.controller.setTarget(component, value) },
                             onJog = { axis, amount -> vm.controller.jog(axis, amount) },
-                            onHome = { vm.controller.home() },
+                            onHome = { axes -> vm.controller.home(axes) },
                             onExtrude = { amount -> vm.controller.extrude(amount) },
                             onGcode = { line -> vm.controller.sendGcode(line) },
                             onConnectPrinter = { vm.controller.connectPrinter() },

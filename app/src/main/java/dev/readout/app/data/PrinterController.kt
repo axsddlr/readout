@@ -505,7 +505,7 @@ class PrinterController(context: Context) {
 
     fun jog(axis: String, millimetres: Float) = action { it.jog(axis, millimetres) }
 
-    fun home() = action { it.home() }
+    fun home(axes: List<String> = listOf("x", "y", "z")) = action { it.home(axes) }
 
     fun extrude(millimetres: Float) = action { it.extrude(millimetres) }
 
