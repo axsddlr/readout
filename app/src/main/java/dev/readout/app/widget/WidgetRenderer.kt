@@ -142,7 +142,7 @@ object WidgetRenderer {
             views.setViewVisibility(R.id.camera_placeholder, android.view.View.VISIBLE)
             views.setTextViewText(
                 R.id.camera_placeholder,
-                if (configured) "No frame yet — check the camera URL" else "No camera configured"
+                if (configured) "No frame yet — check the camera URL" else "No printer configured"
             )
         }
 

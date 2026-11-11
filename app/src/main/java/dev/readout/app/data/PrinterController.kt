@@ -579,11 +579,50 @@ class PrinterController(context: Context) {
         )
     }
 
+    /** A single JPEG from the camera — the fallback for setups that serve no live stream. */
     suspend fun fetchCameraFrame(): ByteArray? = withContext(Dispatchers.IO) {
-        val config = _state.value.config ?: return@withContext null
-        val url = config.webcamUrl?.takeIf { it.isNotBlank() }
-            ?: (config.baseUrl.trimEnd('/') + "/webcam/?action=snapshot")
+        val url = stillUrl() ?: return@withContext null
         runCatching { api?.fetchBytes(url) }.getOrNull()
+    }
+
+    /**
+     * The live MJPEG stream, handing each JPEG to [onFrame] and returning how many were read.
+     * Zero means the endpoint answered but served no stream, so the caller falls back to stills.
+     */
+    suspend fun streamCamera(onFrame: (ByteArray) -> Unit): Int = withContext(Dispatchers.IO) {
+        val url = streamUrl() ?: return@withContext 0
+        val client = api ?: return@withContext 0
+        client.stream(url) { input, contentType ->
+            val isStream = contentType.contains("multipart", ignoreCase = true) ||
+                contentType.contains("image/jpeg", ignoreCase = true)
+            if (isStream) MjpegFrameReader(sink = onFrame).read(input) else 0
+        }
+    }
+
+    /**
+     * Where the camera lives. A blank setting means OctoPrint's own webcam path, which is why the
+     * card appears on a stock install without the user configuring anything.
+     */
+    private fun stillUrl(): String? {
+        val config = _state.value.config ?: return null
+        val base = config.baseUrl.trimEnd('/')
+        return config.webcamUrl?.takeIf { it.isNotBlank() } ?: "$base/webcam/?action=snapshot"
+    }
+
+    /**
+     * The stream for the same camera: a configured snapshot URL is switched to the stream action on
+     * the same endpoint, since OctoPrint's webcam proxy serves both. Anything else falls back to the
+     * default path rather than inventing a URL from an unknown one.
+     */
+    private fun streamUrl(): String? {
+        val config = _state.value.config ?: return null
+        val base = config.baseUrl.trimEnd('/')
+        val configured = config.webcamUrl?.takeIf { it.isNotBlank() }
+        return when {
+            configured == null -> "$base/webcam/?action=stream"
+            "action=snapshot" in configured -> configured.replace("action=snapshot", "action=stream")
+            else -> "$base/webcam/?action=stream"
+        }
     }
 
     private fun action(block: suspend (OctoPrintApi) -> Unit): Job = scope.launch {

@@ -399,7 +399,7 @@ private fun PrinterDetailsSheet(
             OutlinedTextField(
                 value = webcam,
                 onValueChange = onWebcam,
-                label = { Text("Camera snapshot URL") },
+                label = { Text("Camera URL") },
                 placeholder = { Text("http://octopi.local/webcam/?action=snapshot") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -407,7 +407,7 @@ private fun PrinterDetailsSheet(
             )
             Spacer(Modifier.height(Spacing.xs))
             Text(
-                "Leave blank to use /webcam/?action=snapshot on the printer address.",
+                "Leave blank for the printer's own /webcam/. The live stream is used when that camera serves one; otherwise the app shows stills.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

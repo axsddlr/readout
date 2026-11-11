@@ -1,6 +1,5 @@
 package dev.readout.app.ui.screens
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -63,9 +61,6 @@ import dev.readout.app.ui.theme.ReadoutHeroStyle
 import dev.readout.app.ui.theme.ReadoutStyle
 import dev.readout.app.ui.theme.Spacing
 import dev.readout.app.util.Format
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
 private val ActiveJob = setOf(
     MachineState.Printing, MachineState.Paused, MachineState.Pausing,
@@ -89,7 +84,10 @@ fun NowScreen(
     onOpenMachine: () -> Unit,
     onOpenSettings: () -> Unit,
     onSetTarget: (ComponentTemperature, Int) -> Unit,
-    fetchFrame: suspend () -> ByteArray?,
+    cameraFrame: ImageBitmap?,
+    cameraLive: Boolean,
+    cameraAvailable: Boolean,
+    onCameraVisible: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snapshot = state.snapshot
@@ -171,9 +169,11 @@ fun NowScreen(
         SectionHeading("Camera")
         CameraCard(
             enabled = state.phase == ConnectionPhase.Live,
-            configured = state.config?.webcamUrl != null,
+            frame = cameraFrame,
+            live = cameraLive,
+            available = cameraAvailable,
             stateLabel = snapshot?.stateLabel,
-            fetchFrame = fetchFrame,
+            onVisible = onCameraVisible,
             onConfigure = onOpenSettings
         )
 
@@ -308,31 +308,23 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 @Composable
 private fun CameraCard(
     enabled: Boolean,
-    configured: Boolean,
+    frame: ImageBitmap?,
+    live: Boolean,
+    available: Boolean,
     stateLabel: String?,
-    fetchFrame: suspend () -> ByteArray?,
+    onVisible: (Boolean) -> Unit,
     onConfigure: () -> Unit
 ) {
-    var frame by remember { mutableStateOf<ImageBitmap?>(null) }
-    var attempted by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
 
-    LaunchedEffect(enabled, configured) {
-        if (!enabled || !configured) return@LaunchedEffect
-        while (true) {
-            val bytes = runCatching { fetchFrame() }.getOrNull()
-            attempted = true
-            if (bytes != null) {
-                // Decode off the main thread; keep the last good frame if this one is bad.
-                withContext(Dispatchers.Default) {
-                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
-                }?.let { frame = it }
-            }
-            delay(2_000)
-        }
+    // The stream lives only as long as this card is composed and connected: leaving Now, closing
+    // the app or losing the link all stop it rather than leaving a socket open.
+    DisposableEffect(enabled) {
+        onVisible(enabled)
+        onDispose { onVisible(false) }
     }
 
-    if (!configured) {
+    if (frame == null && !available) {
         Plate(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Spacing.s),
@@ -341,9 +333,9 @@ private fun CameraCard(
                 Icon(ReadoutIcons.Camera, contentDescription = null, tint = scheme.onSurfaceVariant)
                 Spacer(Modifier.width(Spacing.l))
                 Column(Modifier.weight(1f)) {
-                    Text("No camera yet", style = MaterialTheme.typography.bodyLarge)
+                    Text("No camera found", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Add a snapshot URL to watch the print.",
+                        "Set a camera URL in Settings if it is not at the printer's own address.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onSurfaceVariant
                     )
@@ -361,11 +353,10 @@ private fun CameraCard(
             .clip(MaterialTheme.shapes.large)
             .background(scheme.surfaceContainerHigh)
     ) {
-        val current = frame
-        if (current != null) {
+        if (frame != null) {
             Image(
-                bitmap = current,
-                contentDescription = "Live camera frame from the printer",
+                bitmap = frame,
+                contentDescription = "Camera view of the printer",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -383,20 +374,28 @@ private fun CameraCard(
                     )
                 }
             }
+            // A snapshot every two seconds is not live, and saying so is the difference between a
+            // viewer and a promise.
+            Surface(
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.m),
+                shape = CircleShape,
+                color = scheme.inverseSurface.copy(alpha = 0.72f),
+                contentColor = scheme.inverseOnSurface
+            ) {
+                Text(
+                    text = if (live) "Live" else "Stills",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                )
+            }
         } else {
             Column(
                 modifier = Modifier.align(Alignment.Center).padding(Spacing.l),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (!attempted || !enabled) "Waiting for a camera frame" else "No camera image",
+                    text = if (enabled) "Connecting to the camera" else "Waiting for the printer",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = scheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(Spacing.xs))
-                Text(
-                    text = "Check the camera URL in Settings.",
-                    style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
             }

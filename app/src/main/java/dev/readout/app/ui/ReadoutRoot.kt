@@ -146,6 +146,9 @@ private fun MainShell(vm: ReadoutViewModel) {
     val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
     val notificationsEnabled by vm.notifications.collectAsStateWithLifecycle()
     val moveDuringPrint by vm.moveDuringPrint.collectAsStateWithLifecycle()
+    val cameraFrame by vm.cameraFrame.collectAsStateWithLifecycle()
+    val cameraLive by vm.cameraLive.collectAsStateWithLifecycle()
+    val cameraAvailable by vm.cameraAvailable.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -341,7 +344,10 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onOpenMachine = { stack = Nav.select(stack, Route.Machine) },
                             onOpenSettings = { stack = Nav.push(stack, Route.Settings) },
                             onSetTarget = { component, value -> vm.controller.setTarget(component, value) },
-                            fetchFrame = { vm.controller.fetchCameraFrame() }
+                            cameraFrame = cameraFrame,
+                            cameraLive = cameraLive,
+                            cameraAvailable = cameraAvailable,
+                            onCameraVisible = vm::onCameraVisible
                         )
 
                         Route.Files -> FilesScreen(

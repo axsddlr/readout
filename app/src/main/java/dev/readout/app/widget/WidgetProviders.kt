@@ -58,7 +58,7 @@ object WidgetRefresher {
     fun updateCamera(context: Context, snapshot: PrinterSnapshot? = WidgetCache.read(context)) {
         val ids = WidgetRenderer.ids(context, CameraWidgetProvider::class.java)
         if (ids.isEmpty()) return
-        val configured = PrinterStore(context).active()?.webcamUrl != null
+        val configured = PrinterStore(context).active() != null
         val bitmap = readCachedCamera(context)
         val manager = AppWidgetManager.getInstance(context)
         ids.forEach { id ->
@@ -174,7 +174,7 @@ class CameraWidgetProvider : AppWidgetProvider() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val snapshot = WidgetCache.read(context)
-                val configured = PrinterStore(context).active()?.webcamUrl != null
+                val configured = PrinterStore(context).active() != null
                 val bitmap = runCatching {
                     val file = java.io.File(context.cacheDir, "widget-camera.jpg")
                     if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null

@@ -350,6 +350,29 @@ class OctoPrintApi(
         }
     }
 
+    /**
+     * Opens a long-lived response — an MJPEG camera stream — and hands the body to [block] with its
+     * content type. The read timeout is what stops a stalled camera from holding the caller
+     * forever, and closing the stream is what ends the connection.
+     */
+    fun <T> stream(absoluteUrl: String, block: (java.io.InputStream, String) -> T): T {
+        val connection = (URL(absoluteUrl).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8_000
+            // Cameras push frames many times a second; this only fires when one goes silent.
+            readTimeout = 6_000
+            requestMethod = "GET"
+            setRequestProperty("X-Api-Key", apiKey)
+            setRequestProperty("Accept", "*/*")
+        }
+        return try {
+            val code = connection.responseCode
+            if (code !in 200..299) throw OctoPrintException("Camera answered $code")
+            connection.inputStream.use { input -> block(input, connection.contentType.orEmpty()) }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     // -- transport --------------------------------------------------------------------------
 
     private fun command(path: String, body: JSONObject) {
