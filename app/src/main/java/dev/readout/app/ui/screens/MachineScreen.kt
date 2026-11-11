@@ -179,12 +179,38 @@ fun MachineScreen(
             }
         }
         Spacer(Modifier.height(Spacing.s))
-        // The cross OctoPrint users know: X and Y around a home button, Z standing beside them.
+        // Z on the left, the X/Y cross on the right, under a right thumb.
         Plate(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Spacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Spacer(Modifier.width(Spacing.s))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Z",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowUp,
+                            "Move Z positive",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("z", step) }
+                        AxisButton(
+                            Icons.Filled.Home,
+                            "Home Z",
+                            enabled = !busy && !movementLocked
+                        ) { onHome(listOf("z")) }
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowDown,
+                            "Move Z negative",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("z", -step) }
+                    }
+                }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "X / Y",
@@ -228,31 +254,6 @@ fun MachineScreen(
                             ) { onJog("y", -step) }
                             Spacer(Modifier.width(AXIS_BUTTON))
                         }
-                    }
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "Z",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        AxisButton(
-                            Icons.Filled.KeyboardArrowUp,
-                            "Move Z positive",
-                            enabled = !busy && !movementLocked
-                        ) { onJog("z", step) }
-                        AxisButton(
-                            Icons.Filled.Home,
-                            "Home Z",
-                            enabled = !busy && !movementLocked
-                        ) { onHome(listOf("z")) }
-                        AxisButton(
-                            Icons.Filled.KeyboardArrowDown,
-                            "Move Z negative",
-                            enabled = !busy && !movementLocked
-                        ) { onJog("z", -step) }
                     }
                 }
                 Spacer(Modifier.width(Spacing.s))
