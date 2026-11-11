@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.readout.app.data.CameraRead
+import dev.readout.app.data.CameraSettings
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.PrinterConfig
 import dev.readout.app.data.PreviewSettings
@@ -59,6 +60,14 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
 
     private val _previewSettings = MutableStateFlow(store.previewSettings())
     val previewSettings: StateFlow<PreviewSettings> = _previewSettings.asStateFlow()
+
+    private val _cameraSettings = MutableStateFlow(store.cameraSettings())
+    val cameraSettings: StateFlow<CameraSettings> = _cameraSettings.asStateFlow()
+
+    fun setCameraSettings(settings: CameraSettings) {
+        store.setCameraSettings(settings)
+        _cameraSettings.value = settings
+    }
 
     fun setPreviewSettings(settings: PreviewSettings) {
         store.setPreviewSettings(settings)
@@ -139,6 +148,20 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         try {
             val job = coroutineContext[Job]
             while (true) {
+                // Data saver skips the stream entirely: the camera's bitrate is the cost it exists
+                // to avoid, and a still every few seconds is enough to glance at.
+                if (!_cameraSettings.value.streamLive) {
+                    _cameraLive.value = false
+                    val still = runCatching { controller.fetchCameraFrame() }.getOrNull()
+                    if (still != null) {
+                        frames.trySend(still)
+                        _cameraAvailable.value = true
+                    } else if (_cameraFrame.value == null) {
+                        _cameraAvailable.value = false
+                    }
+                    delay(DATA_SAVER_MS)
+                    continue
+                }
                 val result = runCatching {
                     controller.readCamera(
                         onFrame = { bytes ->
@@ -147,9 +170,9 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
                             frames.trySend(bytes)
                         },
                         // Cancelling the coroutine cannot interrupt a blocking socket read, so the
-                        // reader is told to stop between frames; leaving the card therefore closes
-                        // the camera connection within a frame rather than at the next timeout.
-                        keepGoing = { job?.isActive != false }
+                        // reader is told to stop between frames; leaving the card — or switching on
+                        // data saver — therefore closes the camera connection within a frame.
+                        keepGoing = { job?.isActive != false && _cameraSettings.value.streamLive }
                     )
                 }.getOrNull()
 
@@ -217,5 +240,6 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         const val MIN_FRAME_INTERVAL_MS = 100L
         const val RETRY_STREAM_MS = 500L
         const val RETRY_STILL_MS = 2_000L
+        const val DATA_SAVER_MS = 5_000L
     }
 }

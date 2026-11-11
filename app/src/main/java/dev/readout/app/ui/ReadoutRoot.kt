@@ -150,6 +150,7 @@ private fun MainShell(vm: ReadoutViewModel) {
     val cameraFrame by vm.cameraFrame.collectAsStateWithLifecycle()
     val cameraLive by vm.cameraLive.collectAsStateWithLifecycle()
     val cameraAvailable by vm.cameraAvailable.collectAsStateWithLifecycle()
+    val cameraSettings by vm.cameraSettings.collectAsStateWithLifecycle()
     val previewSettings by vm.previewSettings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
@@ -357,6 +358,8 @@ private fun MainShell(vm: ReadoutViewModel) {
                             cameraFrame = cameraFrame,
                             cameraLive = cameraLive,
                             cameraAvailable = cameraAvailable,
+                            cameraSettings = cameraSettings,
+                            onCameraSettings = vm::setCameraSettings,
                             onCameraVisible = vm::onCameraVisible,
                             onOpenPreview = { stack = Nav.push(stack, Route.Preview) }
                         )

@@ -107,6 +107,25 @@ class PrinterStore(context: Context) {
             .apply()
     }
 
+    /** Camera card behaviour; one camera per printer, so these are app-wide like the preview's. */
+    fun cameraSettings(): CameraSettings = CameraSettings(
+        aspect = CameraAspect.entries
+            .firstOrNull { it.name == prefs.getString(KEY_CAMERA_ASPECT, null) }
+            ?: CameraAspect.FromImage,
+        showResolution = prefs.getBoolean(KEY_CAMERA_SHOW_RESOLUTION, false),
+        showName = prefs.getBoolean(KEY_CAMERA_SHOW_NAME, false),
+        dataSaver = prefs.getBoolean(KEY_CAMERA_DATA_SAVER, false)
+    )
+
+    fun setCameraSettings(settings: CameraSettings) {
+        prefs.edit()
+            .putString(KEY_CAMERA_ASPECT, settings.aspect.name)
+            .putBoolean(KEY_CAMERA_SHOW_RESOLUTION, settings.showResolution)
+            .putBoolean(KEY_CAMERA_SHOW_NAME, settings.showName)
+            .putBoolean(KEY_CAMERA_DATA_SAVER, settings.dataSaver)
+            .apply()
+    }
+
     // -- persistence -----------------------------------------------------------------------
 
     private fun migrateIfNeeded() {
@@ -176,6 +195,10 @@ class PrinterStore(context: Context) {
         const val KEY_PREVIEW_PREVIOUS = "preview_previous_layer"
         const val KEY_PREVIEW_CURRENT = "preview_current_layer"
         const val KEY_PREVIEW_QUALITY = "preview_quality"
+        const val KEY_CAMERA_ASPECT = "camera_aspect"
+        const val KEY_CAMERA_SHOW_RESOLUTION = "camera_show_resolution"
+        const val KEY_CAMERA_SHOW_NAME = "camera_show_name"
+        const val KEY_CAMERA_DATA_SAVER = "camera_data_saver"
 
         const val LEGACY_URL = "base_url"
         const val LEGACY_KEY = "api_key"

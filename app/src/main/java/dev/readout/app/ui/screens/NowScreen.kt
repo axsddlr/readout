@@ -21,14 +21,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +51,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import dev.readout.app.data.CameraAspect
+import dev.readout.app.data.CameraSettings
 import dev.readout.app.data.ComponentTemperature
 import dev.readout.app.data.ConnectionPhase
 import dev.readout.app.data.MachineState
@@ -89,6 +98,8 @@ fun NowScreen(
     cameraFrame: ImageBitmap?,
     cameraLive: Boolean,
     cameraAvailable: Boolean,
+    cameraSettings: CameraSettings,
+    onCameraSettings: (CameraSettings) -> Unit,
     onCameraVisible: (Boolean) -> Unit,
     onOpenPreview: () -> Unit,
     modifier: Modifier = Modifier
@@ -97,7 +108,12 @@ fun NowScreen(
     val palette = LocalPalette.current
     var editing by remember { mutableStateOf<ComponentTemperature?>(null) }
     var confirmCancel by remember { mutableStateOf(false) }
+    var showCameraSettings by rememberSaveable { mutableStateOf(false) }
     val machineState = snapshot?.state
+    val cameraName = state.config?.let { config ->
+        config.webcamUrl?.let { url -> runCatching { java.net.URI(url).host }.getOrNull() }
+            ?: "Printer webcam"
+    } ?: "Printer webcam"
 
     Column(
         modifier = modifier
@@ -169,13 +185,26 @@ fun NowScreen(
         }
 
         // -- Camera -------------------------------------------------------------------------
-        SectionHeading("Camera")
+        SectionHeading(
+            title = "Camera",
+            trailing = {
+                IconButton(onClick = { showCameraSettings = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Camera settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        )
         CameraCard(
             enabled = state.phase == ConnectionPhase.Live,
             frame = cameraFrame,
             live = cameraLive,
             available = cameraAvailable,
             stateLabel = snapshot?.stateLabel,
+            settings = cameraSettings,
+            cameraName = cameraName,
             onVisible = onCameraVisible,
             onConfigure = onOpenSettings
         )
@@ -284,6 +313,94 @@ fun NowScreen(
             }
         )
     }
+
+    if (showCameraSettings) {
+        CameraSettingsSheet(
+            settings = cameraSettings,
+            onChange = onCameraSettings,
+            onDismiss = { showCameraSettings = false }
+        )
+    }
+}
+
+/**
+ * The camera's own settings: the shape of the card, what is printed over the picture, and whether
+ * to spend the stream's bandwidth at all. One camera per printer, so the values are app-wide.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CameraSettingsSheet(
+    settings: CameraSettings,
+    onChange: (CameraSettings) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .padding(horizontal = Spacing.xl)
+                .padding(bottom = Spacing.xxl)
+        ) {
+            Text("Camera settings", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "The picture comes from OctoPrint's webcam; these choices only change how Readout shows it.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(Spacing.l))
+
+            Text("Aspect ratio", style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(Spacing.xs))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                CameraAspect.entries.forEach { aspect ->
+                    FilterChip(
+                        selected = settings.aspect == aspect,
+                        onClick = { onChange(settings.copy(aspect = aspect)) },
+                        label = { Text(aspect.label) }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(Spacing.s))
+            CameraToggle(
+                title = "Show resolution",
+                checked = settings.showResolution,
+                onChange = { onChange(settings.copy(showResolution = it)) }
+            )
+            CameraToggle(
+                title = "Show name",
+                checked = settings.showName,
+                onChange = { onChange(settings.copy(showName = it)) }
+            )
+            CameraToggle(
+                title = "Data saver webcam",
+                checked = settings.dataSaver,
+                onChange = { onChange(settings.copy(dataSaver = it)) }
+            )
+            Text(
+                "Takes a snapshot every few seconds instead of pulling the live stream, which costs" +
+                    " the camera's full bitrate.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Spacing.s)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CameraToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable { onChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
+    }
 }
 
 /** Percentage, bar, and times — drawn inside the status card, in its content colour. */
@@ -351,6 +468,8 @@ private fun CameraCard(
     live: Boolean,
     available: Boolean,
     stateLabel: String?,
+    settings: CameraSettings,
+    cameraName: String,
     onVisible: (Boolean) -> Unit,
     onConfigure: () -> Unit
 ) {
@@ -385,10 +504,13 @@ private fun CameraCard(
         return
     }
 
+    val ratio = settings.aspect.ratio
+        ?: frame?.let { it.width.toFloat() / it.height.toFloat() }?.takeIf { it > 0f }
+        ?: (16f / 9f)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .aspectRatio(ratio)
             .clip(MaterialTheme.shapes.large)
             .background(scheme.surfaceContainerHigh)
     ) {
@@ -413,7 +535,7 @@ private fun CameraCard(
                     )
                 }
             }
-            // A snapshot every two seconds is not live, and saying so is the difference between a
+            // A snapshot every few seconds is not live, and saying so is the difference between a
             // viewer and a promise.
             Surface(
                 modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.m),
@@ -426,6 +548,34 @@ private fun CameraCard(
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
                 )
+            }
+            if (settings.showName) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.m),
+                    shape = CircleShape,
+                    color = scheme.inverseSurface.copy(alpha = 0.72f),
+                    contentColor = scheme.inverseOnSurface
+                ) {
+                    Text(
+                        cameraName,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                    )
+                }
+            }
+            if (settings.showResolution) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.m),
+                    shape = CircleShape,
+                    color = scheme.inverseSurface.copy(alpha = 0.72f),
+                    contentColor = scheme.inverseOnSurface
+                ) {
+                    Text(
+                        "${frame.width}×${frame.height}",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                    )
+                }
             }
         } else {
             Column(
