@@ -81,6 +81,19 @@ class MjpegFrameReaderTest {
     }
 
     @Test
+    fun `reading stops when the caller says so`() {
+        val body = multipart(jpeg("one"), jpeg("two"), jpeg("three"))
+        val collected = mutableListOf<ByteArray>()
+
+        // A blocking socket cannot be cancelled from outside, so the reader must check this.
+        val count = MjpegFrameReader { collected += it }
+            .read(ByteArrayInputStream(body), keepGoing = { collected.size < 2 })
+
+        assertEquals(2, count)
+        assertEquals(2, collected.size)
+    }
+
+    @Test
     fun `a frame over the budget is dropped instead of growing memory`() {
         val huge = ByteArray(64) { 0x41 } // no end marker
         val body = byteArrayOf(0xFF.toByte(), 0xD8.toByte()) + huge

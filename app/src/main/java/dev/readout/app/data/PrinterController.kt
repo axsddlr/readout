@@ -589,14 +589,19 @@ class PrinterController(context: Context) {
      * Opens the camera's stream URL and reports what came back: streamed frames (each handed to
      * [onFrame]), a single image, or nothing. The content type decides, so a URL that only ever
      * serves stills is polled rather than waiting on a stream that will never arrive.
+     *
+     * [keepGoing] lets the caller end the read: a blocking socket cannot be cancelled from outside.
      */
-    suspend fun readCamera(onFrame: (ByteArray) -> Unit): CameraRead = withContext(Dispatchers.IO) {
+    suspend fun readCamera(
+        onFrame: (ByteArray) -> Unit,
+        keepGoing: () -> Boolean = { true }
+    ): CameraRead = withContext(Dispatchers.IO) {
         val config = _state.value.config ?: return@withContext CameraRead.Nothing
         val client = api ?: return@withContext CameraRead.Nothing
         client.stream(cameraUrls(config).stream) { input, contentType ->
             when {
                 contentType.contains("multipart", ignoreCase = true) ->
-                    CameraRead.Frames(MjpegFrameReader(sink = onFrame).read(input))
+                    CameraRead.Frames(MjpegFrameReader(sink = onFrame).read(input, keepGoing))
 
                 contentType.startsWith("image/", ignoreCase = true) -> {
                     val bytes = input.readBytes()

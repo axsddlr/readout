@@ -19,8 +19,14 @@ class MjpegFrameReader(
     private val sink: (ByteArray) -> Unit
 ) {
 
-    /** Returns how many frames were read, which is zero when the body was not MJPEG at all. */
-    fun read(input: InputStream): Int {
+    /**
+     * Returns how many frames were read, which is zero when the body was not MJPEG at all.
+     *
+     * [keepGoing] is checked between reads because a blocking socket read cannot be cancelled from
+     * outside: without it, closing the camera card would leave the connection streaming until the
+     * camera itself hung up.
+     */
+    fun read(input: InputStream, keepGoing: () -> Boolean = { true }): Int {
         val buffer = ByteArray(16 * 1024)
         val frame = ByteArrayOutputStream(256 * 1024)
         var previous = -1
@@ -28,6 +34,7 @@ class MjpegFrameReader(
         var frames = 0
 
         while (true) {
+            if (!keepGoing()) break
             val read = input.read(buffer)
             if (read < 0) break
             var index = 0
@@ -44,6 +51,9 @@ class MjpegFrameReader(
                         }
                         inFrame = false
                         frame.reset()
+                        // Checked per frame, not per read: a small body can arrive in one read and
+                        // a blocking socket cannot be cancelled from outside.
+                        if (!keepGoing()) return frames
                     } else {
                         frame.write(current)
                         if (frame.size() > maxFrameBytes) {

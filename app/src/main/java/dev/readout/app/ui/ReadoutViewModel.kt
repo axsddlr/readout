@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,14 +128,24 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         try {
+            val job = coroutineContext[Job]
             while (true) {
                 val result = runCatching {
-                    controller.readCamera { bytes ->
-                        _cameraLive.value = true
-                        _cameraAvailable.value = true
-                        frames.trySend(bytes)
-                    }
+                    controller.readCamera(
+                        onFrame = { bytes ->
+                            _cameraLive.value = true
+                            _cameraAvailable.value = true
+                            frames.trySend(bytes)
+                        },
+                        // Cancelling the coroutine cannot interrupt a blocking socket read, so the
+                        // reader is told to stop between frames; leaving the card therefore closes
+                        // the camera connection within a frame rather than at the next timeout.
+                        keepGoing = { job?.isActive != false }
+                    )
                 }.getOrNull()
+
+                // A stop that raced with the read must not be mistaken for the stream ending.
+                currentCoroutineContext().ensureActive()
 
                 when (result) {
                     is CameraRead.Frames -> {
