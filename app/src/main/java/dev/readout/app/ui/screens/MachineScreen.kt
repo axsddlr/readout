@@ -179,41 +179,17 @@ fun MachineScreen(
             }
         }
         Spacer(Modifier.height(Spacing.s))
-        // Z on the left, the X/Y cross on the right, under a right thumb.
+        // The pad is X and Z: up/down walks the bed, left/right raises and lowers it. Y keeps its
+        // own column, so every axis stays reachable and each label names what it moves.
         Plate(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Spacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(Modifier.width(Spacing.s))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "Z",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        AxisButton(
-                            Icons.Filled.KeyboardArrowUp,
-                            "Move Z positive",
-                            enabled = !busy && !movementLocked
-                        ) { onJog("z", step) }
-                        AxisButton(
-                            Icons.Filled.Home,
-                            "Home Z",
-                            enabled = !busy && !movementLocked
-                        ) { onHome(listOf("z")) }
-                        AxisButton(
-                            Icons.Filled.KeyboardArrowDown,
-                            "Move Z negative",
-                            enabled = !busy && !movementLocked
-                        ) { onJog("z", -step) }
-                    }
-                }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "X / Y",
+                        "X / Z",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -223,37 +199,62 @@ fun MachineScreen(
                             Spacer(Modifier.width(AXIS_BUTTON))
                             AxisButton(
                                 Icons.Filled.KeyboardArrowUp,
-                                "Move Y positive",
+                                "Move X forward",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("y", step) }
+                            ) { onJog("x", step) }
                             Spacer(Modifier.width(AXIS_BUTTON))
                         }
                         Row {
                             AxisButton(
                                 Icons.Filled.KeyboardArrowLeft,
-                                "Move X negative",
+                                "Lower Z",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("x", -step) }
+                            ) { onJog("z", -step) }
                             AxisButton(
                                 Icons.Filled.Home,
-                                "Home X and Y",
+                                "Home X and Z",
                                 enabled = !busy && !movementLocked
-                            ) { onHome(listOf("x", "y")) }
+                            ) { onHome(listOf("x", "z")) }
                             AxisButton(
                                 Icons.Filled.KeyboardArrowRight,
-                                "Move X positive",
+                                "Raise Z",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("x", step) }
+                            ) { onJog("z", step) }
                         }
                         Row {
                             Spacer(Modifier.width(AXIS_BUTTON))
                             AxisButton(
                                 Icons.Filled.KeyboardArrowDown,
-                                "Move Y negative",
+                                "Move X back",
                                 enabled = !busy && !movementLocked
-                            ) { onJog("y", -step) }
+                            ) { onJog("x", -step) }
                             Spacer(Modifier.width(AXIS_BUTTON))
                         }
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Y",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowUp,
+                            "Move Y positive",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("y", step) }
+                        AxisButton(
+                            Icons.Filled.Home,
+                            "Home Y",
+                            enabled = !busy && !movementLocked
+                        ) { onHome(listOf("y")) }
+                        AxisButton(
+                            Icons.Filled.KeyboardArrowDown,
+                            "Move Y negative",
+                            enabled = !busy && !movementLocked
+                        ) { onJog("y", -step) }
                     }
                 }
                 Spacer(Modifier.width(Spacing.s))
