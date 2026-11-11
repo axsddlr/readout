@@ -147,7 +147,6 @@ private fun MainShell(vm: ReadoutViewModel) {
     val dynamicColor by vm.dynamicColor.collectAsStateWithLifecycle()
     val notificationsEnabled by vm.notifications.collectAsStateWithLifecycle()
     val moveDuringPrint by vm.moveDuringPrint.collectAsStateWithLifecycle()
-    val cameraFrame by vm.cameraFrame.collectAsStateWithLifecycle()
     val cameraLive by vm.cameraLive.collectAsStateWithLifecycle()
     val cameraAvailable by vm.cameraAvailable.collectAsStateWithLifecycle()
     val cameraSettings by vm.cameraSettings.collectAsStateWithLifecycle()
@@ -355,7 +354,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onOpenMachine = { stack = Nav.select(stack, Route.Machine) },
                             onOpenSettings = { stack = Nav.push(stack, Route.Settings) },
                             onSetTarget = { component, value -> vm.controller.setTarget(component, value) },
-                            cameraFrame = cameraFrame,
+                            cameraFrame = vm.cameraFrame,
                             cameraLive = cameraLive,
                             cameraAvailable = cameraAvailable,
                             cameraSettings = cameraSettings,

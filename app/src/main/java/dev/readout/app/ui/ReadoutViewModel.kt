@@ -2,7 +2,6 @@ package dev.readout.app.ui
 
 import android.app.Application
 import android.graphics.BitmapFactory
-import android.os.SystemClock
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
@@ -125,6 +124,8 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         cameraJob?.cancel()
         cameraJob = null
         _cameraLive.value = false
+        // A different camera may have a different resolution.
+        decodeSampleSize = 0
     }
 
     /**
@@ -135,13 +136,9 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun cameraLoop() = coroutineScope {
         val frames = Channel<ByteArray>(capacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
         val decoder = launch(Dispatchers.Default) {
-            var lastDecoded = 0L
             for (bytes in frames) {
-                // The camera pushes ~25 fps; a small card cannot show that and the decode cost is
-                // real, so the UI settles on about ten frames a second.
-                val now = SystemClock.elapsedRealtime()
-                if (now - lastDecoded < MIN_FRAME_INTERVAL_MS) continue
-                lastDecoded = now
+                // The channel holds one frame, so a slow decode drops the middle of a burst instead
+                // of playing it back late; decoding every frame is what keeps motion fluid.
                 decodeFrame(bytes)?.let { _cameraFrame.value = it }
             }
         }
@@ -214,19 +211,28 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Frames from one camera all have the same size, so the sample factor is measured once per
+     * session instead of costing a bounds-only decode on every frame.
+     */
+    private var decodeSampleSize = 0
+
     private fun decodeFrame(bytes: ByteArray): ImageBitmap? = runCatching {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        // A 4K camera would otherwise allocate tens of megabytes per frame for a card that is a
-        // few hundred dp tall.
-        var sample = 1
-        val longest = maxOf(bounds.outWidth, bounds.outHeight)
-        while (longest / sample > 1280) sample *= 2
+        if (decodeSampleSize == 0) {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            // A 4K camera would otherwise allocate tens of megabytes per frame for a card that is a
+            // few hundred dp tall.
+            var sample = 1
+            val longest = maxOf(bounds.outWidth, bounds.outHeight)
+            while (longest / sample > 1280) sample *= 2
+            decodeSampleSize = sample
+        }
         BitmapFactory.decodeByteArray(
             bytes,
             0,
             bytes.size,
-            BitmapFactory.Options().apply { inSampleSize = sample }
+            BitmapFactory.Options().apply { inSampleSize = decodeSampleSize }
         )?.asImageBitmap()
     }.getOrNull()
 
@@ -237,7 +243,6 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private companion object {
-        const val MIN_FRAME_INTERVAL_MS = 100L
         const val RETRY_STREAM_MS = 500L
         const val RETRY_STILL_MS = 2_000L
         const val DATA_SAVER_MS = 5_000L

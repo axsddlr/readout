@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 import dev.readout.app.data.CameraAspect
 import dev.readout.app.data.CameraSettings
 import dev.readout.app.data.ComponentTemperature
@@ -95,7 +97,7 @@ fun NowScreen(
     onOpenMachine: () -> Unit,
     onOpenSettings: () -> Unit,
     onSetTarget: (ComponentTemperature, Int) -> Unit,
-    cameraFrame: ImageBitmap?,
+    cameraFrame: StateFlow<ImageBitmap?>,
     cameraLive: Boolean,
     cameraAvailable: Boolean,
     cameraSettings: CameraSettings,
@@ -199,7 +201,7 @@ fun NowScreen(
         )
         CameraCard(
             enabled = state.phase == ConnectionPhase.Live,
-            frame = cameraFrame,
+            frameFlow = cameraFrame,
             live = cameraLive,
             available = cameraAvailable,
             stateLabel = snapshot?.stateLabel,
@@ -464,7 +466,7 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 @Composable
 private fun CameraCard(
     enabled: Boolean,
-    frame: ImageBitmap?,
+    frameFlow: StateFlow<ImageBitmap?>,
     live: Boolean,
     available: Boolean,
     stateLabel: String?,
@@ -474,6 +476,9 @@ private fun CameraCard(
     onConfigure: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    // Collected here, not in the screen: a frame arriving must recompose the picture, not the
+    // status card, temperatures and the rest of Now at 25 times a second.
+    val frame by frameFlow.collectAsStateWithLifecycle()
 
     // The stream lives only as long as this card is composed and connected: leaving Now, closing
     // the app or losing the link all stop it rather than leaving a socket open.
@@ -504,8 +509,9 @@ private fun CameraCard(
         return
     }
 
+    val picture = frame
     val ratio = settings.aspect.ratio
-        ?: frame?.let { it.width.toFloat() / it.height.toFloat() }?.takeIf { it > 0f }
+        ?: picture?.let { it.width.toFloat() / it.height.toFloat() }?.takeIf { it > 0f }
         ?: (16f / 9f)
     Box(
         modifier = Modifier
@@ -514,9 +520,9 @@ private fun CameraCard(
             .clip(MaterialTheme.shapes.large)
             .background(scheme.surfaceContainerHigh)
     ) {
-        if (frame != null) {
+        if (picture != null) {
             Image(
-                bitmap = frame,
+                bitmap = picture,
                 contentDescription = "Camera view of the printer",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -571,7 +577,7 @@ private fun CameraCard(
                     contentColor = scheme.inverseOnSurface
                 ) {
                     Text(
-                        "${frame.width}×${frame.height}",
+                        "${picture.width}×${picture.height}",
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
                     )
