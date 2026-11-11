@@ -614,18 +614,17 @@ private fun CameraCard(
                     }
                 }
             }
-            Surface(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.m),
-                shape = CircleShape,
-                color = scheme.inverseSurface.copy(alpha = 0.72f),
-                contentColor = scheme.inverseOnSurface
+            // The mark alone, in white: a filled pill here reads as a control for the picture rather
+            // than a way to step back from it.
+            IconButton(
+                onClick = onOpenFullscreen,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.s)
             ) {
-                IconButton(onClick = onOpenFullscreen) {
-                    Icon(
-                        imageVector = ReadoutIcons.Expand,
-                        contentDescription = "Fullscreen camera"
-                    )
-                }
+                Icon(
+                    imageVector = ReadoutIcons.Expand,
+                    contentDescription = "Fullscreen camera",
+                    tint = androidx.compose.ui.graphics.Color.White
+                )
             }
         } else {
             Column(
