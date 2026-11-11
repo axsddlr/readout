@@ -330,7 +330,7 @@ fun NowScreen(
         dev.readout.app.ui.components.CameraFullscreen(
             frameFlow = cameraFrame,
             live = cameraLive,
-            stateLabel = snapshot?.stateLabel,
+            snapshot = snapshot,
             cameraName = cameraName,
             settings = cameraSettings,
             onClose = { fullscreenCamera = false }
