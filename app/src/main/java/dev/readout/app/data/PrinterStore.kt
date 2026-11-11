@@ -114,7 +114,8 @@ class PrinterStore(context: Context) {
             ?: CameraAspect.FromImage,
         showResolution = prefs.getBoolean(KEY_CAMERA_SHOW_RESOLUTION, false),
         showName = prefs.getBoolean(KEY_CAMERA_SHOW_NAME, false),
-        dataSaver = prefs.getBoolean(KEY_CAMERA_DATA_SAVER, false)
+        dataSaver = prefs.getBoolean(KEY_CAMERA_DATA_SAVER, false),
+        ignoreRotationLock = prefs.getBoolean(KEY_CAMERA_IGNORE_ROTATION, false)
     )
 
     fun setCameraSettings(settings: CameraSettings) {
@@ -123,6 +124,7 @@ class PrinterStore(context: Context) {
             .putBoolean(KEY_CAMERA_SHOW_RESOLUTION, settings.showResolution)
             .putBoolean(KEY_CAMERA_SHOW_NAME, settings.showName)
             .putBoolean(KEY_CAMERA_DATA_SAVER, settings.dataSaver)
+            .putBoolean(KEY_CAMERA_IGNORE_ROTATION, settings.ignoreRotationLock)
             .apply()
     }
 
@@ -199,6 +201,7 @@ class PrinterStore(context: Context) {
         const val KEY_CAMERA_SHOW_RESOLUTION = "camera_show_resolution"
         const val KEY_CAMERA_SHOW_NAME = "camera_show_name"
         const val KEY_CAMERA_DATA_SAVER = "camera_data_saver"
+        const val KEY_CAMERA_IGNORE_ROTATION = "camera_ignore_rotation"
 
         const val LEGACY_URL = "base_url"
         const val LEGACY_KEY = "api_key"

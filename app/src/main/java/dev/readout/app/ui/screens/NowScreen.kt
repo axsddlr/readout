@@ -111,6 +111,7 @@ fun NowScreen(
     var editing by remember { mutableStateOf<ComponentTemperature?>(null) }
     var confirmCancel by remember { mutableStateOf(false) }
     var showCameraSettings by rememberSaveable { mutableStateOf(false) }
+    var fullscreenCamera by rememberSaveable { mutableStateOf(false) }
     val machineState = snapshot?.state
     val cameraName = state.config?.let { config ->
         config.webcamUrl?.let { url -> runCatching { java.net.URI(url).host }.getOrNull() }
@@ -208,6 +209,7 @@ fun NowScreen(
             settings = cameraSettings,
             cameraName = cameraName,
             onVisible = onCameraVisible,
+            onOpenFullscreen = { fullscreenCamera = true },
             onConfigure = onOpenSettings
         )
 
@@ -323,6 +325,17 @@ fun NowScreen(
             onDismiss = { showCameraSettings = false }
         )
     }
+
+    if (fullscreenCamera) {
+        dev.readout.app.ui.components.CameraFullscreen(
+            frameFlow = cameraFrame,
+            live = cameraLive,
+            stateLabel = snapshot?.stateLabel,
+            cameraName = cameraName,
+            settings = cameraSettings,
+            onClose = { fullscreenCamera = false }
+        )
+    }
 }
 
 /**
@@ -386,6 +399,17 @@ private fun CameraSettingsSheet(
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Spacing.s)
+            )
+            CameraToggle(
+                title = "Ignore rotation lock",
+                checked = settings.ignoreRotationLock,
+                onChange = { onChange(settings.copy(ignoreRotationLock = it)) }
+            )
+            Text(
+                "Fullscreen follows the sensor even when the phone's rotation is locked, which is" +
+                    " how a clamped phone still turns the camera the right way up.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant
             )
         }
     }
@@ -473,6 +497,7 @@ private fun CameraCard(
     settings: CameraSettings,
     cameraName: String,
     onVisible: (Boolean) -> Unit,
+    onOpenFullscreen: () -> Unit,
     onConfigure: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -555,31 +580,49 @@ private fun CameraCard(
                     modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
                 )
             }
-            if (settings.showName) {
-                Surface(
-                    modifier = Modifier.align(Alignment.BottomStart).padding(Spacing.m),
-                    shape = CircleShape,
-                    color = scheme.inverseSurface.copy(alpha = 0.72f),
-                    contentColor = scheme.inverseOnSurface
+            if (settings.showName || settings.showResolution) {
+                Row(
+                    Modifier.align(Alignment.BottomStart).padding(Spacing.m),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
-                    Text(
-                        cameraName,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
-                    )
+                    if (settings.showName) {
+                        Surface(
+                            shape = CircleShape,
+                            color = scheme.inverseSurface.copy(alpha = 0.72f),
+                            contentColor = scheme.inverseOnSurface
+                        ) {
+                            Text(
+                                cameraName,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                            )
+                        }
+                    }
+                    if (settings.showResolution) {
+                        Surface(
+                            shape = CircleShape,
+                            color = scheme.inverseSurface.copy(alpha = 0.72f),
+                            contentColor = scheme.inverseOnSurface
+                        ) {
+                            Text(
+                                "${picture.width}×${picture.height}",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+                            )
+                        }
+                    }
                 }
             }
-            if (settings.showResolution) {
-                Surface(
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.m),
-                    shape = CircleShape,
-                    color = scheme.inverseSurface.copy(alpha = 0.72f),
-                    contentColor = scheme.inverseOnSurface
-                ) {
-                    Text(
-                        "${picture.width}×${picture.height}",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.xs)
+            Surface(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.m),
+                shape = CircleShape,
+                color = scheme.inverseSurface.copy(alpha = 0.72f),
+                contentColor = scheme.inverseOnSurface
+            ) {
+                IconButton(onClick = onOpenFullscreen) {
+                    Icon(
+                        imageVector = ReadoutIcons.Expand,
+                        contentDescription = "Fullscreen camera"
                     )
                 }
             }

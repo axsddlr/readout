@@ -16,6 +16,7 @@ class CameraSettingsTest {
         assertFalse(settings.showResolution)
         assertFalse(settings.showName)
         assertFalse(settings.dataSaver)
+        assertFalse(settings.ignoreRotationLock)
         assertTrue(settings.streamLive)
     }
 

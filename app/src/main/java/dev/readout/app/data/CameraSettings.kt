@@ -18,7 +18,9 @@ data class CameraSettings(
     val aspect: CameraAspect = CameraAspect.FromImage,
     val showResolution: Boolean = false,
     val showName: Boolean = false,
-    val dataSaver: Boolean = false
+    val dataSaver: Boolean = false,
+    /** Fullscreen follows the sensor even when the phone's rotation is locked, if held sideways. */
+    val ignoreRotationLock: Boolean = false
 ) {
     val streamLive: Boolean get() = !dataSaver
 }

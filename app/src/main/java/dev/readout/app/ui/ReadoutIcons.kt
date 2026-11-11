@@ -36,6 +36,25 @@ object ReadoutIcons {
         }.build()
     }
 
+    /** Four corner brackets: expand to fullscreen. */
+    val Expand: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Expand", defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f
+        ).apply {
+            path(
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round
+            ) {
+                moveTo(4f, 9f); lineTo(4f, 4f); lineTo(9f, 4f)
+                moveTo(15f, 4f); lineTo(20f, 4f); lineTo(20f, 9f)
+                moveTo(20f, 15f); lineTo(20f, 20f); lineTo(15f, 20f)
+                moveTo(9f, 20f); lineTo(4f, 20f); lineTo(4f, 15f)
+            }
+        }.build()
+    }
+
     val Printer: ImageVector by lazy {
         ImageVector.Builder(
             name = "Printer", defaultWidth = 24.dp, defaultHeight = 24.dp,
