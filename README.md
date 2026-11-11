@@ -24,6 +24,10 @@ no account, no cloud, no analytics.
   a selection of them.
 - **Surfaces** — three home-screen widgets, a live print notification with a pause action, and a
   standalone Wear OS app.
+- **System** — OctoPrint and OctoPi versions, the hardware model, printer firmware, memory and the
+  Raspberry Pi's throttle flags (an under-voltage Pi is the usual cause of a "slow" print), plus the
+  server's own restart/reboot/shutdown commands, each behind its own confirmation and locked while a
+  job runs. A "keep the screen on while printing" switch covers a phone left watching the camera.
 
 ## Requirements
 

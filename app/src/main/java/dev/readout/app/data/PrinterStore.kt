@@ -118,8 +118,14 @@ class PrinterStore(context: Context) {
         ignoreRotationLock = prefs.getBoolean(KEY_CAMERA_IGNORE_ROTATION, false)
     )
 
-    fun setCameraSettings(settings: CameraSettings) {
-        prefs.edit()
+    /** Keeps the screen awake while a job runs, for a phone left watching the camera. */
+    fun keepScreenOn(): Boolean = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
+
+    fun setKeepScreenOn(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, enabled).apply()
+    }
+
+    fun setCameraSettings(settings: CameraSettings) {        prefs.edit()
             .putString(KEY_CAMERA_ASPECT, settings.aspect.name)
             .putBoolean(KEY_CAMERA_SHOW_RESOLUTION, settings.showResolution)
             .putBoolean(KEY_CAMERA_SHOW_NAME, settings.showName)
@@ -201,6 +207,7 @@ class PrinterStore(context: Context) {
         const val KEY_CAMERA_SHOW_RESOLUTION = "camera_show_resolution"
         const val KEY_CAMERA_SHOW_NAME = "camera_show_name"
         const val KEY_CAMERA_DATA_SAVER = "camera_data_saver"
+        const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         const val KEY_CAMERA_IGNORE_ROTATION = "camera_ignore_rotation"
 
         const val LEGACY_URL = "base_url"

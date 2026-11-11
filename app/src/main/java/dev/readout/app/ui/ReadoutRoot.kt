@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -51,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.readout.app.data.ConnectionPhase
 import dev.readout.app.data.FileEntry
 import dev.readout.app.data.MachineState
+import dev.readout.app.data.jobInProgress
 import dev.readout.app.data.ThemePreference
 import dev.readout.app.notification.PrintNotificationService
 import dev.readout.app.ui.components.Masthead
@@ -150,10 +152,19 @@ private fun MainShell(vm: ReadoutViewModel) {
     val cameraLive by vm.cameraLive.collectAsStateWithLifecycle()
     val cameraAvailable by vm.cameraAvailable.collectAsStateWithLifecycle()
     val cameraSettings by vm.cameraSettings.collectAsStateWithLifecycle()
+    val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val previewSettings by vm.previewSettings.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // Only while a job runs: the setting is about watching a print, not holding the phone awake for
+    // its own sake.
+    val printingNow = state.snapshot?.state?.jobInProgress == true
+    val rootView = LocalView.current
+    DisposableEffect(rootView, printingNow, keepScreenOn) {
+        rootView.keepScreenOn = printingNow && keepScreenOn
+        onDispose { rootView.keepScreenOn = false }
+    }
     var stack by rememberSaveable(stateSaver = RouteStackSaver) { mutableStateOf(Nav.start) }
     var showSwitcher by remember { mutableStateOf(false) }
     val route = stack.last()
@@ -298,10 +309,17 @@ private fun MainShell(vm: ReadoutViewModel) {
                             dynamicColor = dynamicColor,
                             notificationsEnabled = notificationsEnabled,
                             moveDuringPrint = moveDuringPrint,
+                            keepScreenOn = keepScreenOn,
+                            jobActive = printingNow,
                             onTheme = vm::setTheme,
                             onDynamicColor = vm::setDynamicColor,
                             onNotificationsChange = vm::setNotifications,
                             onMoveDuringPrint = vm::setMoveDuringPrint,
+                            onKeepScreenOn = vm::setKeepScreenOn,
+                            loadSystem = { vm.controller.loadSystem() },
+                            onSystemCommand = { source, action ->
+                                vm.controller.runSystemCommand(source, action)
+                            },
                             onNameChange = { vm.controller.savePrinterName(it) },
                             onWebcamChange = { vm.controller.saveWebcam(it) },
                             onDisconnect = {

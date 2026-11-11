@@ -93,6 +93,17 @@ class OctoPrintApi(
         JSONObject().put("commands", JSONArray(lines))
     )
 
+    /** The machine OctoPrint runs on: versions, model, firmware, throttle flags. */
+    fun systemInfo(): SystemInfo = SystemInfo.from(request("GET", "/api/system/info").asObject())
+
+    /** Server commands the installation offers, each with its own confirmation text. */
+    fun systemCommands(): List<SystemCommand> =
+        SystemCommand.list(request("GET", "/api/system/commands").asObject())
+
+    fun runSystemCommand(source: String, action: String) {
+        request("POST", "/api/system/commands/${encode(source)}/${encode(action)}", JSONObject())
+    }
+
     fun startPrint(origin: String, path: String) = command(
         "/api/files/${encode(origin)}/${encodePath(path)}",
         JSONObject().put("command", "select").put("print", true)

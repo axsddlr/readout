@@ -63,6 +63,14 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
     private val _cameraSettings = MutableStateFlow(store.cameraSettings())
     val cameraSettings: StateFlow<CameraSettings> = _cameraSettings.asStateFlow()
 
+    private val _keepScreenOn = MutableStateFlow(store.keepScreenOn())
+    val keepScreenOn: StateFlow<Boolean> = _keepScreenOn.asStateFlow()
+
+    fun setKeepScreenOn(enabled: Boolean) {
+        store.setKeepScreenOn(enabled)
+        _keepScreenOn.value = enabled
+    }
+
     fun setCameraSettings(settings: CameraSettings) {
         store.setCameraSettings(settings)
         _cameraSettings.value = settings

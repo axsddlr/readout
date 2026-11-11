@@ -571,6 +571,15 @@ class PrinterController(context: Context) {
         runCatching { client.deleteTimelapse(entry.name) }.isSuccess
     }
 
+    /** The server's own description of itself, plus the actions it is willing to take. */
+    suspend fun loadSystem(): Pair<SystemInfo, List<SystemCommand>> = withContext(Dispatchers.IO) {
+        val client = api ?: throw OctoPrintException("No printer configured")
+        client.systemInfo() to client.systemCommands()
+    }
+
+    fun runSystemCommand(source: String, action: String) =
+        action { it.runSystemCommand(source, action) }
+
     /** Timelapse downloads live on the web endpoint, not the API, and still need the key. */
     fun timelapseUrl(entry: TimelapseEntry): String {
         val base = _state.value.config?.baseUrl?.trimEnd('/') ?: return ""

@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.readout.app.data.PrinterConfig
+import dev.readout.app.data.SystemCommand
+import dev.readout.app.data.SystemInfo
 import dev.readout.app.data.ThemePreference
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.RowDivider
@@ -74,10 +77,15 @@ fun SettingsScreen(
     dynamicColor: Boolean,
     notificationsEnabled: Boolean,
     moveDuringPrint: Boolean,
+    keepScreenOn: Boolean,
+    jobActive: Boolean,
     onTheme: (ThemePreference) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onMoveDuringPrint: (Boolean) -> Unit,
+    onKeepScreenOn: (Boolean) -> Unit,
+    loadSystem: suspend () -> Pair<SystemInfo, List<SystemCommand>>,
+    onSystemCommand: (String, String) -> Unit,
     onSwitchInstance: (String) -> Unit,
     onRemoveInstance: (PrinterConfig) -> Boolean,
     onAddAnother: () -> Unit,
@@ -245,6 +253,13 @@ fun SettingsScreen(
             onClick = { onMoveDuringPrint(!moveDuringPrint) },
             trailing = { Switch(checked = moveDuringPrint, onCheckedChange = null) }
         )
+        SettingRow(
+            title = "Keep the screen on while printing",
+            supporting = "Holds the display awake for a phone left watching the camera. The screen " +
+                "sleeps normally when nothing is running.",
+            onClick = { onKeepScreenOn(!keepScreenOn) },
+            trailing = { Switch(checked = keepScreenOn, onCheckedChange = null) }
+        )
 
         // -- Notifications -------------------------------------------------------------------
         SectionHeading("Notifications")
@@ -304,6 +319,14 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        // -- System --------------------------------------------------------------------------
+        SectionHeading("System")
+        SystemSection(
+            loadSystem = loadSystem,
+            onSystemCommand = onSystemCommand,
+            jobActive = jobActive
+        )
 
         // -- About ---------------------------------------------------------------------------
         SectionHeading("About")
@@ -431,6 +454,121 @@ private fun PrinterDetailsSheet(
             )
             SpecRow(null, "Key", "•••• " + config.apiKey.takeLast(4))
         }
+    }
+}
+
+/**
+ * What OctoPrint says about the machine it runs on, and the handful of server actions it offers.
+ *
+ * The throttle flags are the reason this exists: a Pi running a camera browns out quietly, and the
+ * symptom looks like a printer fault. Commands come from the server rather than a hardcoded list,
+ * carry the server's own warning, and stay locked while a job is running.
+ */
+@Composable
+private fun SystemSection(
+    loadSystem: suspend () -> Pair<SystemInfo, List<SystemCommand>>,
+    onSystemCommand: (String, String) -> Unit,
+    jobActive: Boolean
+) {
+    var info by remember { mutableStateOf<SystemInfo?>(null) }
+    var commands by remember { mutableStateOf<List<SystemCommand>>(emptyList()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var pending by remember { mutableStateOf<SystemCommand?>(null) }
+
+    LaunchedEffect(Unit) {
+        loading = true
+        runCatching { loadSystem() }
+            .onSuccess { (loadedInfo, loadedCommands) ->
+                info = loadedInfo
+                commands = loadedCommands
+                error = null
+            }
+            .onFailure { error = it.message ?: "Could not read the system" }
+        loading = false
+    }
+
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when {
+        loading && info == null -> Text(
+            "Reading the server…",
+            style = MaterialTheme.typography.bodySmall,
+            color = muted
+        )
+
+        error != null && info == null -> Text(
+            "No system details: $error",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+
+        info != null -> {
+            val details = info!!
+            Plate(Modifier.fillMaxWidth()) {
+                Column {
+                    details.octoPrintVersion?.let { SpecRow(null, "OctoPrint", it) }
+                    details.octoPiVersion?.let { SpecRow(null, "OctoPi", it) }
+                    details.model?.let { SpecRow(null, "Hardware", it) }
+                    details.firmware?.let { SpecRow(null, "Firmware", it) }
+                    details.pythonVersion?.let { SpecRow(null, "Python", it) }
+                    details.ramMegabytes?.let { SpecRow(null, "Memory", "$it MB") }
+                    if (details.safeMode) SpecRow(null, "Safe mode", "on")
+                }
+            }
+
+            val warnings = details.throttleWarnings
+            if (warnings.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.s))
+                warnings.forEach { warning ->
+                    Text(
+                        text = warning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else if (details.throttleState != null) {
+                Spacer(Modifier.height(Spacing.xs))
+                Text(
+                    "Power and temperature are within range.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted
+                )
+            }
+
+            if (commands.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.m))
+                Text("Server commands", style = MaterialTheme.typography.bodyLarge)
+                if (jobActive) {
+                    Text(
+                        "Unavailable while a print is running.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted
+                    )
+                }
+                commands.forEach { command ->
+                    OutlinedButton(
+                        onClick = { pending = command },
+                        enabled = !jobActive,
+                        modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs)
+                    ) { Text(command.name) }
+                }
+            }
+        }
+    }
+
+    pending?.let { command ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text(command.name) },
+            text = { Text(command.confirm ?: "Run ${command.name} on the OctoPrint server?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSystemCommand(command.source, command.action)
+                    pending = null
+                }) { Text("Run", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } }
+        )
     }
 }
 
