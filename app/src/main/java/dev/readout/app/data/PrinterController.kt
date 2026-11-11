@@ -538,6 +538,29 @@ class PrinterController(context: Context) {
         preview
     }
 
+    /**
+     * The file the printer is running, parsed on demand. This is what the live viewer draws, and
+     * parsing it also gives the Now card its layer estimate on the next poll.
+     */
+    suspend fun loadJobPreview(): GcodePreview {
+        val snapshot = _state.value.snapshot
+        val origin = snapshot?.jobOrigin
+        val path = snapshot?.jobPath
+        if (origin.isNullOrBlank() || path.isNullOrBlank()) {
+            throw OctoPrintException("The printer is not running a file")
+        }
+        return loadPreview(
+            FileEntry(
+                name = path.substringAfterLast('/'),
+                path = path,
+                origin = origin,
+                sizeBytes = 0L,
+                dateSeconds = null,
+                isDirectory = false
+            )
+        )
+    }
+
     suspend fun loadTimelapses(): List<TimelapseEntry> = withContext(Dispatchers.IO) {
         val client = api ?: throw OctoPrintException("No printer configured")
         client.timelapses()

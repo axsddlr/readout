@@ -1,8 +1,7 @@
 package dev.readout.app.data
 
 /** How much of the whole part is drawn behind the selected layer. */
-enum class PreviewQuality {
-    /** Samples the ghost heavily; cheapest on a large file. */
+enum class PreviewQuality {    /** Samples the ghost heavily; cheapest on a large file. */
     Low,
 
     /** Half the ghost's segments. */
@@ -13,7 +12,14 @@ enum class PreviewQuality {
 }
 
 /**
- * How the toolpath preview draws. The ghost of the whole part is the expensive geometry, so the
+ * The layer index a following viewer should show, from a 1-based layer count as the printer reports
+ * it. Null when there is nothing to follow yet, and clamped so an off-by-one in either direction
+ * cannot point outside the file.
+ */
+fun followedLayerIndex(reported: Int?, total: Int): Int? =
+    if (reported == null || total <= 0) null else (reported - 1).coerceIn(0, total - 1)
+
+/** How the toolpath preview draws. The ghost of the whole part is the expensive geometry, so the
  * quality setting samples it rather than thinning the layer the user is actually looking at.
  */
 data class PreviewSettings(

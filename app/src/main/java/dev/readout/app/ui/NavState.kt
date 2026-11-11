@@ -8,7 +8,7 @@ package dev.readout.app.ui
  * Back always undoes the thing the user just did instead of guessing from a flag.
  */
 enum class Route {
-    Now, Files, Machine, Settings, Timelapses, Fleet;
+    Now, Files, Machine, Settings, Timelapses, Fleet, Preview;
 
     val isTopLevel: Boolean get() = this == Now || this == Files || this == Machine
 }

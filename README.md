@@ -9,7 +9,8 @@ no account, no cloud, no analytics.
 
 - **Now** — state, job, progress, elapsed/remaining with ETA provenance, layer progress (exact from
   DisplayLayerProgress, otherwise estimated from a file the app has already opened), a live MJPEG
-  camera with a stills fallback, temperatures, pause/resume/cancel.
+  camera with a stills fallback, a G-code viewer that follows the running print layer by layer,
+  temperatures, pause/resume/cancel.
 - **Files** — filter, inspect, start, upload and batch-delete G-code; a layer-by-layer toolpath
   preview drawn from the file itself, with the model's size, layer height, filament and print time,
   and per-layer height, command count and duration as you scrub; the drawing can show the previous
@@ -82,9 +83,10 @@ Thirteen screens, captured on a Galaxy S24 Ultra against the mock server — see
 
 ## Testing
 
-82 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
-handshake, the navigation back stack, G-code statistics, layer estimation, MJPEG framing, camera URL
-resolution, preview drawing settings and the watch client, several against a real `MockWebServer`.
+85 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
+handshake, the navigation back stack, G-code statistics, layer estimation and following, MJPEG
+framing, camera URL resolution, preview drawing settings and the watch client, several against a real
+`MockWebServer`.
 
 ## Known limitations
 

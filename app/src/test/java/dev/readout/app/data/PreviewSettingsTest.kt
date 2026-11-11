@@ -40,4 +40,23 @@ class PreviewSettingsTest {
             assertTrue(PreviewSettings(quality = quality).qualityDescription.isNotBlank())
         }
     }
+
+    @Test
+    fun `following maps a one-based layer onto a zero-based index`() {
+        assertEquals(0, followedLayerIndex(1, 105))
+        assertEquals(52, followedLayerIndex(53, 105))
+        assertEquals(104, followedLayerIndex(105, 105))
+    }
+
+    @Test
+    fun `following clamps a count that runs past the file`() {
+        assertEquals(104, followedLayerIndex(200, 105))
+        assertEquals(0, followedLayerIndex(0, 105))
+    }
+
+    @Test
+    fun `following has nothing to show without a layer or a file`() {
+        assertEquals(null, followedLayerIndex(null, 105))
+        assertEquals(null, followedLayerIndex(3, 0))
+    }
 }

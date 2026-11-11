@@ -2,6 +2,7 @@ package dev.readout.app.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -88,6 +90,7 @@ fun NowScreen(
     cameraLive: Boolean,
     cameraAvailable: Boolean,
     onCameraVisible: (Boolean) -> Unit,
+    onOpenPreview: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snapshot = state.snapshot
@@ -176,6 +179,42 @@ fun NowScreen(
             onVisible = onCameraVisible,
             onConfigure = onOpenSettings
         )
+
+        // -- Toolpaths ----------------------------------------------------------------------
+        // A job is the only time a layer can be followed, so the entry point only exists then.
+        if (snapshot?.jobName != null) {
+            SectionHeading("Toolpaths")
+            Plate(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenPreview)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = Spacing.s),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(ReadoutIcons.File, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(Spacing.l))
+                    Column(Modifier.weight(1f)) {
+                        Text("G-code preview", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = when {
+                                snapshot.layer != null && snapshot.layerCount != null ->
+                                    "Layer ${snapshot.layer} of ${snapshot.layerCount}, updating live"
+                                else -> "Watch the toolpaths advance with the print"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
         // -- Temperatures -------------------------------------------------------------------
         SectionHeading("Temperatures")

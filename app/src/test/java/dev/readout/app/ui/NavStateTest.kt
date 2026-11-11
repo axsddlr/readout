@@ -62,5 +62,6 @@ class NavStateTest {
         assertFalse(Route.Settings.isTopLevel)
         assertFalse(Route.Timelapses.isTopLevel)
         assertFalse(Route.Fleet.isTopLevel)
+        assertFalse(Route.Preview.isTopLevel)
     }
 }

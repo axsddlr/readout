@@ -60,6 +60,7 @@ import dev.readout.app.ui.screens.FilesScreen
 import dev.readout.app.ui.screens.MachineScreen
 import dev.readout.app.ui.screens.NowScreen
 import dev.readout.app.ui.screens.FleetScreen
+import dev.readout.app.ui.screens.PreviewScreen
 import dev.readout.app.ui.screens.SettingsScreen
 import dev.readout.app.ui.screens.TimelapseScreen
 import dev.readout.app.ui.theme.ReadoutTheme
@@ -336,6 +337,13 @@ private fun MainShell(vm: ReadoutViewModel) {
                             onBack = { stack = Nav.back(stack) ?: stack }
                         )
 
+                        Route.Preview -> PreviewScreen(
+                            state = state,
+                            load = { vm.controller.loadJobPreview() },
+                            settings = previewSettings,
+                            onBack = { stack = Nav.back(stack) ?: stack }
+                        )
+
                         Route.Now -> NowScreen(
                             state = state,
                             onPause = { vm.controller.pause() },
@@ -348,7 +356,8 @@ private fun MainShell(vm: ReadoutViewModel) {
                             cameraFrame = cameraFrame,
                             cameraLive = cameraLive,
                             cameraAvailable = cameraAvailable,
-                            onCameraVisible = vm::onCameraVisible
+                            onCameraVisible = vm::onCameraVisible,
+                            onOpenPreview = { stack = Nav.push(stack, Route.Preview) }
                         )
 
                         Route.Files -> FilesScreen(
