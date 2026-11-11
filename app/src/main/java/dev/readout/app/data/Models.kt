@@ -57,6 +57,56 @@ data class PrinterConfig(
         get() = baseUrl.removePrefix("http://").removePrefix("https://").trimEnd('/')
 }
 
+/** The two ways to read one camera: a single JPEG, and the live stream of them. */
+data class CameraUrls(val still: String, val stream: String)
+
+/**
+ * Resolves the camera URLs from the configured webcam address.
+ *
+ * OctoPrint's webcam proxy answers both `?action=snapshot` and `?action=stream` on the same path, so
+ * one configured URL implies the other. A configured *stream* URL is honoured for streaming and
+ * reversed for the still, which is what someone who pastes a stream link expects. An endpoint that
+ * matches neither shape is used for both and simply falls back to stills if it is not a stream.
+ */
+fun cameraUrls(config: PrinterConfig): CameraUrls {
+    val base = config.baseUrl.trimEnd('/')
+    val configured = config.webcamUrl?.takeIf { it.isNotBlank() }
+    return when {
+        configured == null -> CameraUrls(
+            still = "$base/webcam/?action=snapshot",
+            stream = "$base/webcam/?action=stream"
+        )
+
+        "action=stream" in configured -> CameraUrls(
+            still = configured.replace("action=stream", "action=snapshot"),
+            stream = configured
+        )
+
+        "action=snapshot" in configured -> CameraUrls(
+            still = configured,
+            stream = configured.replace("action=snapshot", "action=stream")
+        )
+
+        else -> CameraUrls(still = configured, stream = configured)
+    }
+}
+
+/** What opening the camera URL produced. */
+sealed interface CameraRead {
+    /** A multipart stream that ended after [count] frames. */
+    data class Frames(val count: Int) : CameraRead
+
+    /** The URL answered with one image rather than a stream. */
+    data class Single(val bytes: ByteArray) : CameraRead {
+        override fun equals(other: Any?): Boolean =
+            other is Single && bytes.contentEquals(other.bytes)
+        override fun hashCode(): Int = bytes.contentHashCode()
+    }
+
+    /** No camera at that address, or something that was not an image at all. */
+    data object Nothing : CameraRead
+}
+
 data class FileEntry(
     val name: String,
     val path: String,

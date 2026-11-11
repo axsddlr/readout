@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.readout.app.data.CameraRead
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.PrinterConfig
 import dev.readout.app.data.PrinterController
@@ -126,30 +127,42 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         }
         try {
             while (true) {
-                val read = runCatching {
-                    controller.streamCamera { bytes ->
+                val result = runCatching {
+                    controller.readCamera { bytes ->
                         _cameraLive.value = true
                         _cameraAvailable.value = true
                         frames.trySend(bytes)
                     }
-                }.getOrDefault(0)
+                }.getOrNull()
 
-                if (read == 0) {
-                    // No stream: try a still, then wait before asking again.
-                    _cameraLive.value = false
-                    val still = runCatching { controller.fetchCameraFrame() }.getOrNull()
-                    if (still != null) {
-                        frames.trySend(still)
-                        _cameraAvailable.value = true
-                    } else if (_cameraFrame.value == null) {
-                        _cameraAvailable.value = false
+                when (result) {
+                    is CameraRead.Frames -> {
+                        // The stream ended after frames arrived; the next attempt will reconnect.
+                        _cameraLive.value = false
+                        _cameraAvailable.value = result.count > 0
+                        delay(RETRY_STREAM_MS)
                     }
-                } else {
-                    // The stream ended after frames arrived; the next attempt will reconnect.
-                    _cameraLive.value = false
-                    _cameraAvailable.value = true
+
+                    is CameraRead.Single -> {
+                        // The URL answers with one image, so it is a still camera being polled.
+                        _cameraLive.value = false
+                        _cameraAvailable.value = true
+                        frames.trySend(result.bytes)
+                        delay(RETRY_STILL_MS)
+                    }
+
+                    else -> {
+                        _cameraLive.value = false
+                        val still = runCatching { controller.fetchCameraFrame() }.getOrNull()
+                        if (still != null) {
+                            frames.trySend(still)
+                            _cameraAvailable.value = true
+                        } else if (_cameraFrame.value == null) {
+                            _cameraAvailable.value = false
+                        }
+                        delay(RETRY_STILL_MS)
+                    }
                 }
-                delay(if (_cameraLive.value) 500 else 2_000)
             }
         } finally {
             frames.close()
@@ -181,5 +194,7 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
 
     private companion object {
         const val MIN_FRAME_INTERVAL_MS = 100L
+        const val RETRY_STREAM_MS = 500L
+        const val RETRY_STILL_MS = 2_000L
     }
 }

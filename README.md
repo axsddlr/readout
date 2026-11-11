@@ -81,9 +81,9 @@ Thirteen screens, captured on a Galaxy S24 Ultra against the mock server — see
 
 ## Testing
 
-72 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
-handshake, the navigation back stack, G-code statistics, layer estimation, MJPEG framing and the
-watch client, several against a real `MockWebServer`.
+77 JVM tests cover snapshot parsing, the multipart upload body, plugin protocols, the App Keys
+handshake, the navigation back stack, G-code statistics, layer estimation, MJPEG framing, camera URL
+resolution and the watch client, several against a real `MockWebServer`.
 
 ## Known limitations
 

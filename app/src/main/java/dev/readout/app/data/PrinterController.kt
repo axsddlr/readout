@@ -581,47 +581,30 @@ class PrinterController(context: Context) {
 
     /** A single JPEG from the camera — the fallback for setups that serve no live stream. */
     suspend fun fetchCameraFrame(): ByteArray? = withContext(Dispatchers.IO) {
-        val url = stillUrl() ?: return@withContext null
-        runCatching { api?.fetchBytes(url) }.getOrNull()
+        val config = _state.value.config ?: return@withContext null
+        runCatching { api?.fetchBytes(cameraUrls(config).still) }.getOrNull()
     }
 
     /**
-     * The live MJPEG stream, handing each JPEG to [onFrame] and returning how many were read.
-     * Zero means the endpoint answered but served no stream, so the caller falls back to stills.
+     * Opens the camera's stream URL and reports what came back: streamed frames (each handed to
+     * [onFrame]), a single image, or nothing. The content type decides, so a URL that only ever
+     * serves stills is polled rather than waiting on a stream that will never arrive.
      */
-    suspend fun streamCamera(onFrame: (ByteArray) -> Unit): Int = withContext(Dispatchers.IO) {
-        val url = streamUrl() ?: return@withContext 0
-        val client = api ?: return@withContext 0
-        client.stream(url) { input, contentType ->
-            val isStream = contentType.contains("multipart", ignoreCase = true) ||
-                contentType.contains("image/jpeg", ignoreCase = true)
-            if (isStream) MjpegFrameReader(sink = onFrame).read(input) else 0
-        }
-    }
+    suspend fun readCamera(onFrame: (ByteArray) -> Unit): CameraRead = withContext(Dispatchers.IO) {
+        val config = _state.value.config ?: return@withContext CameraRead.Nothing
+        val client = api ?: return@withContext CameraRead.Nothing
+        client.stream(cameraUrls(config).stream) { input, contentType ->
+            when {
+                contentType.contains("multipart", ignoreCase = true) ->
+                    CameraRead.Frames(MjpegFrameReader(sink = onFrame).read(input))
 
-    /**
-     * Where the camera lives. A blank setting means OctoPrint's own webcam path, which is why the
-     * card appears on a stock install without the user configuring anything.
-     */
-    private fun stillUrl(): String? {
-        val config = _state.value.config ?: return null
-        val base = config.baseUrl.trimEnd('/')
-        return config.webcamUrl?.takeIf { it.isNotBlank() } ?: "$base/webcam/?action=snapshot"
-    }
+                contentType.startsWith("image/", ignoreCase = true) -> {
+                    val bytes = input.readBytes()
+                    if (bytes.isEmpty()) CameraRead.Nothing else CameraRead.Single(bytes)
+                }
 
-    /**
-     * The stream for the same camera: a configured snapshot URL is switched to the stream action on
-     * the same endpoint, since OctoPrint's webcam proxy serves both. Anything else falls back to the
-     * default path rather than inventing a URL from an unknown one.
-     */
-    private fun streamUrl(): String? {
-        val config = _state.value.config ?: return null
-        val base = config.baseUrl.trimEnd('/')
-        val configured = config.webcamUrl?.takeIf { it.isNotBlank() }
-        return when {
-            configured == null -> "$base/webcam/?action=stream"
-            "action=snapshot" in configured -> configured.replace("action=snapshot", "action=stream")
-            else -> "$base/webcam/?action=stream"
+                else -> CameraRead.Nothing
+            }
         }
     }
 
