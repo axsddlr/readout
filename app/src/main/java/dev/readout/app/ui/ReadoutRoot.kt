@@ -341,6 +341,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             state = state,
                             load = { vm.controller.loadJobPreview() },
                             settings = previewSettings,
+                            onPreviewSettings = vm::setPreviewSettings,
                             onBack = { stack = Nav.back(stack) ?: stack }
                         )
 

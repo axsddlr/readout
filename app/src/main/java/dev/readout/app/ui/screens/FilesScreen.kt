@@ -77,6 +77,7 @@ import dev.readout.app.ui.components.EmptyNote
 import dev.readout.app.ui.components.Plate
 import dev.readout.app.ui.components.RowDivider
 import dev.readout.app.ui.components.SectionHeading
+import dev.readout.app.ui.components.PreviewSettingsPanel
 import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.components.ToolpathCanvas
 import dev.readout.app.ui.theme.Spacing
@@ -664,65 +665,5 @@ private fun ToolpathPreview(
                 )
             }
         }
-    }
-}
-
-
-/** What the preview draws, in the shape of the sheet it lives in. */
-@Composable
-private fun PreviewSettingsPanel(settings: PreviewSettings, onChange: (PreviewSettings) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(scheme.surfaceContainer)
-            .padding(horizontal = Spacing.l)
-    ) {
-        PreviewToggle(
-            title = "Show previous layer",
-            checked = settings.previousLayer,
-            onChange = { onChange(settings.copy(previousLayer = it)) }
-        )
-        PreviewToggle(
-            title = "Show current layer",
-            checked = settings.currentLayer,
-            onChange = { onChange(settings.copy(currentLayer = it)) }
-        )
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Drawing quality", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(Spacing.m))
-            PreviewQuality.entries.forEach { quality ->
-                FilterChip(
-                    selected = settings.quality == quality,
-                    onClick = { onChange(settings.copy(quality = quality)) },
-                    label = { Text(quality.name) },
-                    modifier = Modifier.padding(start = Spacing.xs)
-                )
-            }
-        }
-        Text(
-            text = settings.qualityDescription,
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Spacing.m)
-        )
-    }
-}
-
-@Composable
-private fun PreviewToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clickable { onChange(!checked) },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
     }
 }

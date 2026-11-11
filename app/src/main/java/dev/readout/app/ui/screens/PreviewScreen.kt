@@ -14,6 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +39,7 @@ import dev.readout.app.data.GcodePreview
 import dev.readout.app.data.PreviewSettings
 import dev.readout.app.data.UiState
 import dev.readout.app.data.followedLayerIndex
+import dev.readout.app.ui.components.PreviewSettingsPanel
 import dev.readout.app.ui.components.SectionHeading
 import dev.readout.app.ui.components.SpecRow
 import dev.readout.app.ui.components.ToolpathCanvas
@@ -57,6 +60,7 @@ fun PreviewScreen(
     state: UiState,
     load: suspend () -> GcodePreview,
     settings: PreviewSettings,
+    onPreviewSettings: (PreviewSettings) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,6 +68,7 @@ fun PreviewScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var follow by rememberSaveable { mutableStateOf(true) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     var layerIndex by remember { mutableIntStateOf(0) }
     val scheme = MaterialTheme.colorScheme
     val snapshot = state.snapshot
@@ -106,6 +111,13 @@ fun PreviewScreen(
             Text("G-code preview", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { reload++ }) { Text("Reload") }
+            IconButton(onClick = { showSettings = !showSettings }) {
+                Icon(
+                    imageVector = if (showSettings) Icons.Filled.Close else Icons.Filled.Settings,
+                    contentDescription = if (showSettings) "Hide preview settings" else "Preview settings",
+                    tint = if (showSettings) scheme.onSurface else scheme.onSurfaceVariant
+                )
+            }
         }
         Text(
             text = snapshot?.jobName ?: "No job loaded",
@@ -164,6 +176,10 @@ fun PreviewScreen(
                             color = scheme.onSurfaceVariant
                         )
                     }
+                }
+                if (showSettings) {
+                    Spacer(Modifier.height(Spacing.s))
+                    PreviewSettingsPanel(settings = settings, onChange = onPreviewSettings)
                 }
                 if (current.layers.size > 1) {
                     Slider(
