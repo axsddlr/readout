@@ -70,7 +70,7 @@ data class CameraUrls(val still: String, val stream: String)
  */
 fun cameraUrls(config: PrinterConfig): CameraUrls {
     val base = config.baseUrl.trimEnd('/')
-    val configured = config.webcamUrl?.takeIf { it.isNotBlank() }
+    val configured = config.webcamUrl?.trim()?.takeIf { it.isNotBlank() }
     return when {
         configured == null -> CameraUrls(
             still = "$base/webcam/?action=snapshot",
@@ -85,6 +85,30 @@ fun cameraUrls(config: PrinterConfig): CameraUrls {
         "action=snapshot" in configured -> CameraUrls(
             still = configured,
             stream = configured.replace("action=snapshot", "action=stream")
+        )
+
+        // OctoPi's camera-streamer also answers /webcam/stream and /webcam/snapshot. Pasting one of
+        // those implies its sibling, not the same URL used for both.
+        configured.endsWith("/webcam/stream", ignoreCase = true) -> CameraUrls(
+            still = configured.dropLast("stream".length) + "snapshot",
+            stream = configured
+        )
+
+        configured.endsWith("/webcam/snapshot", ignoreCase = true) -> CameraUrls(
+            still = configured,
+            stream = configured.dropLast("snapshot".length) + "stream"
+        )
+
+        // The base the new stack's viewer lives at: that path is a page, not an image, so the
+        // classic action paths are appended. Both forms work on that stack.
+        configured.endsWith("/webcam/", ignoreCase = true) -> CameraUrls(
+            still = "${configured}?action=snapshot",
+            stream = "${configured}?action=stream"
+        )
+
+        configured.endsWith("/webcam", ignoreCase = true) -> CameraUrls(
+            still = "$configured/?action=snapshot",
+            stream = "$configured/?action=stream"
         )
 
         else -> CameraUrls(still = configured, stream = configured)

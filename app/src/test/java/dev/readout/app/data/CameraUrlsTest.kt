@@ -41,6 +41,38 @@ class CameraUrlsTest {
     }
 
     @Test
+    fun `the experimental stack base gets the classic action paths`() {
+        val urls = cameraUrls(config("http://192.168.1.193/webcam/"))
+
+        assertEquals("http://192.168.1.193/webcam/?action=snapshot", urls.still)
+        assertEquals("http://192.168.1.193/webcam/?action=stream", urls.stream)
+    }
+
+    @Test
+    fun `a base without the trailing slash still resolves`() {
+        val urls = cameraUrls(config("http://192.168.1.193/webcam"))
+
+        assertEquals("http://192.168.1.193/webcam/?action=snapshot", urls.still)
+        assertEquals("http://192.168.1.193/webcam/?action=stream", urls.stream)
+    }
+
+    @Test
+    fun `camera-streamer stream url implies its snapshot sibling`() {
+        val urls = cameraUrls(config("http://192.168.1.193/webcam/stream"))
+
+        assertEquals("http://192.168.1.193/webcam/stream", urls.stream)
+        assertEquals("http://192.168.1.193/webcam/snapshot", urls.still)
+    }
+
+    @Test
+    fun `camera-streamer snapshot url implies its stream sibling`() {
+        val urls = cameraUrls(config("http://192.168.1.193/webcam/snapshot"))
+
+        assertEquals("http://192.168.1.193/webcam/snapshot", urls.still)
+        assertEquals("http://192.168.1.193/webcam/stream", urls.stream)
+    }
+
+    @Test
     fun `a blank string counts as unset`() {
         val urls = cameraUrls(config("   "))
 
