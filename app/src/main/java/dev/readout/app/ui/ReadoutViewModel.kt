@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.readout.app.data.CameraRead
 import dev.readout.app.data.CameraSettings
+import dev.readout.app.data.sampleSizeFor
 import dev.readout.app.data.CommandResult
 import dev.readout.app.data.PrinterConfig
 import dev.readout.app.data.PreviewSettings
@@ -75,6 +76,19 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         store.setCameraSettings(settings)
         _cameraSettings.value = settings
     }
+
+    /**
+     * Fullscreen asks for the source resolution; the card is content with half of it. Switching
+     * resets the measured sample factor so the next frame is decoded for the new target instead of
+     * waiting for the camera to change.
+     */
+    fun setCameraFullscreen(fullscreen: Boolean) {
+        if (_cameraFullscreen.value == fullscreen) return
+        _cameraFullscreen.value = fullscreen
+        decodeSampleSize = 0
+    }
+
+    private val _cameraFullscreen = MutableStateFlow(false)
 
     fun setPreviewSettings(settings: PreviewSettings) {
         store.setPreviewSettings(settings)
@@ -229,12 +243,11 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         if (decodeSampleSize == 0) {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            // A 4K camera would otherwise allocate tens of megabytes per frame for a card that is a
-            // few hundred dp tall.
-            var sample = 1
-            val longest = maxOf(bounds.outWidth, bounds.outHeight)
-            while (longest / sample > 1280) sample *= 2
-            decodeSampleSize = sample
+            // The fullscreen view keeps the source resolution (1080p from the new camera stack); the
+            // card asks for half of it, which is what keeps 30 fps decoding cheap while it sits in a
+            // scrolling screen. A 4K camera is still sampled down in both cases.
+            val target = if (_cameraFullscreen.value) FULLSCREEN_MAX_SIDE else CARD_MAX_SIDE
+            decodeSampleSize = sampleSizeFor(maxOf(bounds.outWidth, bounds.outHeight), target)
         }
         BitmapFactory.decodeByteArray(
             bytes,
@@ -254,5 +267,9 @@ class ReadoutViewModel(application: Application) : AndroidViewModel(application)
         const val RETRY_STREAM_MS = 500L
         const val RETRY_STILL_MS = 2_000L
         const val DATA_SAVER_MS = 5_000L
+        /** 1080p stays native: the fullscreen view is the one place the detail is visible. */
+        const val FULLSCREEN_MAX_SIDE = 1920
+        /** Half of 1080p for the card: 960x540, plenty at a few hundred dp wide. */
+        const val CARD_MAX_SIDE = 1280
     }
 }

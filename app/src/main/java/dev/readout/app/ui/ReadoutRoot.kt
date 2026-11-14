@@ -377,6 +377,7 @@ private fun MainShell(vm: ReadoutViewModel) {
                             cameraAvailable = cameraAvailable,
                             cameraSettings = cameraSettings,
                             onCameraSettings = vm::setCameraSettings,
+                            onCameraFullscreen = vm::setCameraFullscreen,
                             onCameraVisible = vm::onCameraVisible,
                             onOpenPreview = { stack = Nav.push(stack, Route.Preview) }
                         )

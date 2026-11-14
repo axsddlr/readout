@@ -102,6 +102,7 @@ fun NowScreen(
     cameraAvailable: Boolean,
     cameraSettings: CameraSettings,
     onCameraSettings: (CameraSettings) -> Unit,
+    onCameraFullscreen: (Boolean) -> Unit,
     onCameraVisible: (Boolean) -> Unit,
     onOpenPreview: () -> Unit,
     modifier: Modifier = Modifier
@@ -333,6 +334,7 @@ fun NowScreen(
             snapshot = snapshot,
             cameraName = cameraName,
             settings = cameraSettings,
+            onFullscreen = onCameraFullscreen,
             onClose = { fullscreenCamera = false }
         )
     }

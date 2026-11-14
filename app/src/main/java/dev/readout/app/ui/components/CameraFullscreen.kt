@@ -67,11 +67,19 @@ fun CameraFullscreen(
     snapshot: PrinterSnapshot?,
     cameraName: String,
     settings: CameraSettings,
+    onFullscreen: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     val frame by frameFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+
+    // The decoder asks for the source resolution only while this is open; the card behind it keeps
+    // its half-size frames.
+    DisposableEffect(Unit) {
+        onFullscreen(true)
+        onDispose { onFullscreen(false) }
+    }
 
     DisposableEffect(settings.ignoreRotationLock) {
         val previous = activity?.requestedOrientation
